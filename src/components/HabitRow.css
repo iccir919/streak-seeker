@@ -1,0 +1,169 @@
+/* Grid layout for perfect alignment */
+.habit-grid-header {
+  display: grid;
+  grid-template-columns: 18px 80px 18px repeat(12, 24px); /* Changed from 11 to 12 days */
+  gap: 2px;
+  padding: 3px 6px;
+  margin-bottom: 2px;
+  align-items: center;
+}
+
+.habit-grid-row {
+  display: grid;
+  grid-template-columns: 18px 18px 80px repeat(12, 24px); /* Changed from 11 to 12 days */
+  gap: 2px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+/* Actions column LEFT - drag handle */
+.habit-actions-col-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-handle {
+  font-size: 12px;
+  padding: 0px;
+  color: #666666;
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Edit column - between drag and icon */
+.habit-edit-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn {
+  padding: 2px;
+  font-size: 11px;
+  border-radius: 2px;
+  transition: all 0.15s;
+  background: white;
+}
+
+.action-btn:hover {
+  background: #F5F5F5;
+}
+
+.edit-btn:hover {
+  background: #E3F2FD;
+}
+
+/* Info column - icon */
+.habit-info-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.habit-icon-btn {
+  font-size: 24px;
+  padding: 0px;
+  flex-shrink: 0;
+  text-align: center;
+  transition: opacity 0.2s;
+}
+
+.habit-icon-btn:hover {
+  opacity: 0.6;
+}
+
+/* Day header cells */
+.day-header-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+}
+
+.day-header-label {
+  font-size: 7px;
+  font-weight: 600;
+  color: #666666;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.day-header-date {
+  font-size: 9px;
+  font-weight: 600;
+  color: #333333;
+  line-height: 1;
+}
+
+/* Day columns (checkboxes) */
+.day-col {
+  display: flex;
+  justify-content: center;
+}
+
+.checkbox {
+  width: 19px;
+  height: 19px;
+  border: 1.5px solid black;
+  border-radius: 2px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all 0.15s;
+}
+
+.checkbox:hover {
+  background: #F5F5F5;
+}
+
+.checkbox.checked {
+  background: black;
+  color: white;
+}
+
+/* Streak styling - fire emoji */
+.checkbox.streak {
+  background: #FF6B00;
+  border-color: #FF6B00;
+}
+
+.checkbox.streak:hover {
+  background: #FF8C00;
+  border-color: #FF8C00;
+}
+
+/* Navigation buttons */
+.nav-btn {
+  font-size: 11px;
+  padding: 1px 2px;
+  background: white;
+  border: 1px solid #E5E5E5;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #666666;
+  width: 100%;
+}
+
+.nav-btn:hover {
+  background: #F5F5F5;
+  border-color: black;
+  color: black;
+}
+
+/* Date range display */
+.date-range {
+  font-size: 10px;
+  font-weight: 600;
+  color: #333333;
+  text-align: center;
+}

@@ -1,0 +1,194 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 340px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E5E5;
+}
+
+.modal-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-delete-header {
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  background: white;
+}
+
+.btn-delete-header:hover {
+  background: #FFEBEE;
+}
+
+.modal-close {
+  font-size: 28px;
+  line-height: 1;
+  color: #666666;
+  padding: 0 4px;
+  transition: opacity 0.2s;
+}
+
+.modal-close:hover {
+  opacity: 0.6;
+}
+
+.modal form {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: black;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.emoji-btn {
+  width: 100%;
+  aspect-ratio: 1;
+  font-size: 24px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  background: white;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-btn:hover {
+  background: #F5F5F5;
+  border-color: #666666;
+}
+
+.emoji-btn.selected {
+  border-color: black;
+  border-width: 2px;
+  background: #F5F5F5;
+}
+
+.custom-emoji-btn {
+  font-size: 24px;
+  color: #CCCCCC;
+  cursor: text;
+  padding: 0;
+  text-align: center;
+}
+
+.custom-emoji-btn:focus {
+  border-color: black;
+  color: black;
+}
+
+.custom-emoji-btn::placeholder {
+  color: #CCCCCC;
+  font-size: 20px;
+}
+
+/* Hide placeholder when typing */
+.custom-emoji-btn:not(:placeholder-shown) {
+  font-size: 24px;
+}
+
+.custom-emoji-btn.error {
+  border-color: #dc2626;
+  background: #fee2e2;
+}
+
+.error-hint {
+  display: block;
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #E5E5E5;
+}
+
+.btn-secondary,
+.btn-primary {
+  flex: 1;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-secondary {
+  background: white;
+  color: black;
+  border: 1px solid #E5E5E5;
+}
+
+.btn-secondary:hover {
+  background: #F5F5F5;
+}
+
+.btn-primary {
+  background: black;
+  color: white;
+  border: 1px solid black;
+}
+
+.btn-primary:hover {
+  opacity: 0.8;
+}
