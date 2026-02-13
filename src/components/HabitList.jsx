@@ -1,6 +1,6 @@
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { getDayOfWeek } from '../utils/dateHelpers';
+import { getDayOfWeek, getToday } from '../utils/dateHelpers';
 import HabitRow from './HabitRow';
 import './HabitList.css';
 
@@ -24,6 +24,7 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
   };
 
   const dates = getDatesWithOffset(dateOffset);
+  const today = getToday();
 
   // Get day of month from date string
   const getDayOfMonth = (dateStr) => {
@@ -51,7 +52,7 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px movement required to start drag
+        distance: 8,
       },
     })
   );
@@ -87,12 +88,15 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
           →
         </button>
 
-        {dates.map((date) => (
-          <div key={date} className="day-header-cell">
-            <div className="day-header-label">{getDayOfWeek(date)}</div>
-            <div className="day-header-date">{getDayOfMonth(date)}</div>
-          </div>
-        ))}
+        {dates.map((date) => {
+          const isTodayDate = date === today;
+          return (
+            <div key={date} className={`day-header-cell ${isTodayDate ? 'today' : ''}`}>
+              <div className="day-header-label">{getDayOfWeek(date)}</div>
+              <div className="day-header-date">{getDayOfMonth(date)}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Habit Rows - Sortable */}
@@ -110,6 +114,7 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
               key={habit.id}
               habit={habit}
               dates={dates}
+              today={today}
               onToggle={onToggle}
               onHabitClick={onHabitClick}
               onEdit={onEdit}

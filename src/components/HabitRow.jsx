@@ -4,7 +4,7 @@ import { getDayOfWeek, calculateCurrentStreak } from '../utils/dateHelpers';
 import { getHabitLogs } from '../utils/storage';
 import './HabitRow.css';
 
-function HabitRow({ habit, dates, onToggle, onHabitClick, onEdit }) {
+function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit }) {
   const logs = getHabitLogs(habit.id);
   const currentStreak = calculateCurrentStreak(logs);
 
@@ -32,11 +32,10 @@ function HabitRow({ habit, dates, onToggle, onHabitClick, onEdit }) {
   const isPartOfStreak = (dateStr) => {
     if (currentStreak === 0) return false;
     
-    const today = new Date();
+    const todayDate = new Date();
     const checkDate = new Date(dateStr + 'T00:00:00');
-    const daysDiff = Math.floor((today - checkDate) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.floor((todayDate - checkDate) / (1000 * 60 * 60 * 24));
     
-    // Date is part of streak if it's completed and within the streak range
     return logs[dateStr] && daysDiff < currentStreak;
   };
 
@@ -84,14 +83,15 @@ function HabitRow({ habit, dates, onToggle, onHabitClick, onEdit }) {
       {dates.map((date) => {
         const isCompleted = logs[date] || false;
         const isStreak = isPartOfStreak(date);
+        const isTodayDate = date === today;
         const dayOfWeek = getDayOfWeek(date);
         
         return (
-          <div key={date} className="day-col">
+          <div key={date} className={`day-col ${isTodayDate ? 'today-col' : ''}`}>
             <button
-              className={`checkbox ${isCompleted ? 'checked' : ''} ${isStreak ? 'streak' : ''}`}
+              className={`checkbox ${isCompleted ? 'checked' : ''} ${isStreak ? 'streak' : ''} ${isTodayDate ? 'today' : ''}`}
               onClick={() => onToggle(habit.id, date)}
-              title={`${dayOfWeek} ${date}${isStreak ? ' - On streak! 🔥' : ''}`}
+              title={`${dayOfWeek} ${date}${isStreak ? ' - On streak! 🔥' : ''}${isTodayDate ? ' (Today)' : ''}`}
             >
               {isCompleted && (isStreak ? '🔥' : '✓')}
             </button>

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Streak Seeker",
   "version": "1.0.0",
-  "description": "Track daily habits and build streaks 🔥",
+  "description": "Track daily habits and build streaks. Simple, beautiful, private habit tracker with no login required.",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -15,5 +15,7 @@
       "48": "icon48.png",
       "128": "icon128.png"
     }
-  }
+  },
+  "permissions": [],
+  "host_permissions": []
 }
