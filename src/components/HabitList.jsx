@@ -1,25 +1,27 @@
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { getDayOfWeek } from '../utils/dateHelpers';
 import HabitRow from './HabitRow';
 import './HabitList.css';
 
-function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavigatePrevious, onNavigateNext }) {
+function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavigatePrevious, onNavigateNext, onReorder }) {
   if (habits.length === 0) {
     return null;
   }
 
-// Get dates based on offset
-const getDatesWithOffset = (offset) => {
-  const dates = [];
-  for (let i = 11; i >= 0; i--) { // Changed from 10 to 11 (for 12 days total)
-    const date = new Date();
-    date.setDate(date.getDate() + offset - i);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    dates.push(`${year}-${month}-${day}`);
-  }
-  return dates;
-};
+  // Get dates based on offset
+  const getDatesWithOffset = (offset) => {
+    const dates = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() + offset - i);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+    }
+    return dates;
+  };
 
   const dates = getDatesWithOffset(dateOffset);
 
@@ -44,6 +46,26 @@ const getDatesWithOffset = (offset) => {
   };
 
   const isToday = dateOffset === 0;
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required to start drag
+      },
+    })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = habits.findIndex((habit) => habit.id === active.id);
+      const newIndex = habits.findIndex((habit) => habit.id === over.id);
+
+      onReorder(oldIndex, newIndex);
+    }
+  };
 
   return (
     <div className="habit-list">
@@ -73,17 +95,28 @@ const getDatesWithOffset = (offset) => {
         ))}
       </div>
 
-      {/* Habit Rows */}
-      {habits.map((habit) => (
-        <HabitRow
-          key={habit.id}
-          habit={habit}
-          dates={dates}
-          onToggle={onToggle}
-          onHabitClick={onHabitClick}
-          onEdit={onEdit}
-        />
-      ))}
+      {/* Habit Rows - Sortable */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={habits.map(h => h.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {habits.map((habit) => (
+            <HabitRow
+              key={habit.id}
+              habit={habit}
+              dates={dates}
+              onToggle={onToggle}
+              onHabitClick={onHabitClick}
+              onEdit={onEdit}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

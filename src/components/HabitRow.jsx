@@ -1,3 +1,5 @@
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { getDayOfWeek, calculateCurrentStreak } from '../utils/dateHelpers';
 import { getHabitLogs } from '../utils/storage';
 import './HabitRow.css';
@@ -5,6 +7,21 @@ import './HabitRow.css';
 function HabitRow({ habit, dates, onToggle, onHabitClick, onEdit }) {
   const logs = getHabitLogs(habit.id);
   const currentStreak = calculateCurrentStreak(logs);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: habit.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   const handleEdit = (e) => {
     e.stopPropagation();
@@ -24,10 +41,19 @@ function HabitRow({ habit, dates, onToggle, onHabitClick, onEdit }) {
   };
 
   return (
-    <div className="habit-grid-row">
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className="habit-grid-row"
+    >
       {/* Left column - Drag handle */}
       <div className="habit-actions-col-left">
-        <button className="drag-handle" title="Drag to reorder">
+        <button 
+          className="drag-handle" 
+          {...attributes} 
+          {...listeners}
+          title="Drag to reorder"
+        >
           ⋮
         </button>
       </div>

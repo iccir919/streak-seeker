@@ -32,24 +32,6 @@
   font-weight: 600;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-delete-header {
-  font-size: 18px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  background: white;
-}
-
-.btn-delete-header:hover {
-  background: #FFEBEE;
-}
-
 .modal-close {
   font-size: 28px;
   line-height: 1;
@@ -191,4 +173,29 @@
 
 .btn-primary:hover {
   opacity: 0.8;
+}
+
+/* Delete section at bottom */
+.modal-delete-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #E5E5E5;
+}
+
+.btn-delete-bottom {
+  width: 100%;
+  padding: 10px;
+  background: white;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.btn-delete-bottom:hover {
+  background: #dc2626;
+  color: white;
 }

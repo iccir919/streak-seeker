@@ -97,22 +97,9 @@ function HabitModal({ isOpen, onClose, onSave, onDelete, habit = null }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{habit ? 'Edit Habit' : 'New Habit'}</h2>
-          <div className="header-actions">
-            {habit ? (
-              <button 
-                type="button" 
-                className="btn-delete-header" 
-                onClick={handleDelete}
-                title="Delete habit"
-              >
-                🗑️
-              </button>
-            ) : (
-              <button className="modal-close" onClick={onClose}>
-                ×
-              </button>
-            )}
-          </div>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -172,6 +159,19 @@ function HabitModal({ isOpen, onClose, onSave, onDelete, habit = null }) {
               {habit ? 'Save' : 'Create'}
             </button>
           </div>
+
+          {/* Delete button at bottom - only shown when editing */}
+          {habit && (
+            <div className="modal-delete-section">
+              <button 
+                type="button" 
+                className="btn-delete-bottom" 
+                onClick={handleDelete}
+              >
+                Delete Habit
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

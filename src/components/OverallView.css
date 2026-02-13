@@ -1,0 +1,328 @@
+.overall-view {
+  width: 100%;
+  min-height: 500px;
+  background: white;
+}
+
+/* Header */
+.overall-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E5E5;
+}
+
+.btn-back {
+  font-size: 20px;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-back:hover {
+  opacity: 0.6;
+}
+
+.overall-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Content */
+.overall-content {
+  padding: 20px;
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+/* Period Selector */
+.period-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.period-btn {
+  padding: 8px 16px;
+  background: white;
+  color: #666666;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.period-btn:hover {
+  background: #F5F5F5;
+  border-color: #666666;
+}
+
+.period-btn.active {
+  background: black;
+  color: white;
+  border-color: black;
+}
+
+/* Stats Overview */
+.stats-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.stat-card-small {
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  background: white;
+}
+
+.stat-icon-small {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.stat-value-small {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.stat-label-small {
+  font-size: 10px;
+  color: #666666;
+  font-weight: 500;
+}
+
+/* Sections */
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* Heatmap */
+.heatmap-large {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+
+.heatmap-cell-large {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #E5E5E5;
+}
+
+.heatmap-cell-large:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+/* Heatmap color levels */
+.heatmap-cell-large.level-0 {
+  background: #F5F5F5;
+}
+
+.heatmap-cell-large.level-1 {
+  background: #D0D0D0;
+}
+
+.heatmap-cell-large.level-2 {
+  background: #A0A0A0;
+}
+
+.heatmap-cell-large.level-3 {
+  background: #707070;
+}
+
+.heatmap-cell-large.level-4 {
+  background: #404040;
+}
+
+.heatmap-cell-large.level-5 {
+  background: #000000;
+}
+
+/* Heatmap Legend */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #666666;
+}
+
+.legend-boxes {
+  display: flex;
+  gap: 3px;
+}
+
+.legend-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid #E5E5E5;
+}
+
+/* Apply same colors as heatmap cells */
+.legend-box.level-0 {
+  background: #F5F5F5;
+}
+
+.legend-box.level-1 {
+  background: #D0D0D0;
+}
+
+.legend-box.level-2 {
+  background: #A0A0A0;
+}
+
+.legend-box.level-3 {
+  background: #707070;
+}
+
+.legend-box.level-4 {
+  background: #404040;
+}
+
+.legend-box.level-5 {
+  background: #000000;
+}
+
+/* Habit Rankings */
+.habit-rankings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+}
+
+.ranking-position {
+  font-size: 14px;
+  font-weight: 700;
+  color: #666666;
+  min-width: 24px;
+  text-align: center;
+}
+
+.ranking-habit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 140px;
+}
+
+.ranking-icon {
+  font-size: 20px;
+}
+
+.ranking-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.ranking-count {
+  font-size: 11px;
+  color: #666666;
+  min-width: 50px;
+}
+
+.ranking-bar-container {
+  flex: 1;
+  height: 8px;
+  background: #F5F5F5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ranking-bar {
+  height: 100%;
+  background: black;
+  transition: width 0.3s ease;
+}
+
+.ranking-rate {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Insights */
+.insights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.insight-card {
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+}
+
+.insight-label {
+  font-size: 12px;
+  color: #666666;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.insight-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Scrollbar */
+.overall-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overall-content::-webkit-scrollbar-track {
+  background: #F5F5F5;
+}
+
+.overall-content::-webkit-scrollbar-thumb {
+  background: #E5E5E5;
+  border-radius: 4px;
+}
+
+.overall-content::-webkit-scrollbar-thumb:hover {
+  background: #D0D0D0;
+}

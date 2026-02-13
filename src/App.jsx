@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import HabitList from './components/HabitList';
 import HabitModal from './components/HabitModal';
 import HabitDetailView from './components/HabitDetailView';
-import { getHabits, toggleCompletion, addHabit, updateHabit, deleteHabit } from './utils/storage';
+import OverallView from './components/OverallView';
+import { getHabits, toggleCompletion, addHabit, updateHabit, deleteHabit, reorderHabits } from './utils/storage';
 import './App.css';
 
 function App() {
@@ -50,7 +51,7 @@ function App() {
   const handleDeleteHabit = (habitId) => {
     deleteHabit(habitId);
     loadHabits();
-    setView('main'); // Go back to main after delete
+    setView('main');
   };
 
   const handleHabitClick = (habitId) => {
@@ -76,7 +77,17 @@ function App() {
     setSelectedHabitId(null);
   };
 
-  // Get selected habit
+  const handleReorder = (oldIndex, newIndex) => {
+    const newHabits = [...habits];
+    const [movedHabit] = newHabits.splice(oldIndex, 1);
+    newHabits.splice(newIndex, 0, movedHabit);
+
+    setHabits(newHabits);
+
+    const habitIds = newHabits.map(h => h.id);
+    reorderHabits(habitIds);
+  };
+
   const selectedHabit = habits.find(h => h.id === selectedHabitId);
 
   // Main view
@@ -109,6 +120,7 @@ function App() {
               dateOffset={dateOffset}
               onNavigatePrevious={handleNavigatePrevious}
               onNavigateNext={handleNavigateNext}
+              onReorder={handleReorder}
             />
           )}
         </div>
@@ -117,9 +129,9 @@ function App() {
           <div className="footer">
             <button 
               className="btn-heatmap"
-              onClick={() => setView('heatmap')}
+              onClick={() => setView('overall')}
             >
-              📊 View Heatmap
+              📊 Overall Stats
             </button>
           </div>
         )}
@@ -135,21 +147,11 @@ function App() {
     );
   }
 
-  // Heatmap view (placeholder)
-  if (view === 'heatmap') {
+  // Overall view
+  if (view === 'overall') {
     return (
       <div className="app">
-        <div className="view-header">
-          <button className="btn-back" onClick={() => setView('main')}>
-            ←
-          </button>
-          <h1 className="view-title">Heatmap</h1>
-        </div>
-        <div className="main">
-          <p style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-            Heatmap coming soon...
-          </p>
-        </div>
+        <OverallView onBack={handleBackToMain} />
       </div>
     );
   }
