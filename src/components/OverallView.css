@@ -327,3 +327,52 @@
 .overall-content::-webkit-scrollbar-thumb:hover {
   background: #D0D0D0;
 }
+
+/* Date Picker */
+.date-picker-container {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #F9F9F9;
+  border-radius: 8px;
+}
+
+.date-picker-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-picker-wrapper label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.date-picker-input {
+  padding: 8px 12px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  min-width: 140px;
+  font-family: inherit;
+}
+
+.date-picker-input:hover {
+  border-color: #666666;
+}
+
+.date-picker-input:focus {
+  outline: none;
+  border-color: black;
+}
+
+.date-picker-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+

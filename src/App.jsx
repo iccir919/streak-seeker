@@ -108,8 +108,29 @@ function App() {
           {habits.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">🔥</div>
-              <h2>No habits yet</h2>
-              <p>Add your first habit to start building streaks!</p>
+              <h2>Ready to build a streak?</h2>
+              
+              <div className="empty-state-examples">
+                <div className="example-label">Popular starts:</div>
+                <div className="example-habits">
+                  <div className="example-habit">
+                    <span className="example-icon">💪</span>
+                    <span className="example-name">Exercise</span>
+                  </div>
+                  <div className="example-habit">
+                    <span className="example-icon">📚</span>
+                    <span className="example-name">Read</span>
+                  </div>
+                  <div className="example-habit">
+                    <span className="example-icon">🧘</span>
+                    <span className="example-name">Meditate</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="empty-state-tip">
+                💡 Start with 2-3 habits
+              </div>
             </div>
           ) : (
             <HabitList

@@ -12,7 +12,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: white;
   color: black;
-  width: 500px; /* From 400px to 500px */
+  width: 500px;
   min-height: 500px;
 }
 

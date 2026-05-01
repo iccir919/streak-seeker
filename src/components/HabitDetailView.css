@@ -9,12 +9,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid #E5E5E5;
 }
 
 .btn-back {
-  font-size: 20px;
+  font-size: 18px;
   padding: 4px 8px;
   background: none;
   border: none;
@@ -29,27 +29,26 @@
 .detail-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
 }
 
 .detail-icon {
-  font-size: 32px;
+  font-size: 24px;
 }
 
 .detail-title h1 {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .btn-edit-detail {
-  padding: 8px 16px;
+  padding: 6px 10px;
   background: white;
   color: black;
   border: 1px solid #E5E5E5;
   border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -60,66 +59,145 @@
 
 /* Content */
 .detail-content {
-  padding: 20px;
-  max-height: 450px;
+  padding: 16px;
+  max-height: 480px;
   overflow-y: auto;
 }
 
-/* Stats Grid */
+/* Stats Grid - 4 cards */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   margin-bottom: 24px;
 }
 
 .stat-card {
   border: 1px solid #E5E5E5;
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 6px;
+  padding: 10px 6px;
   text-align: center;
   background: white;
 }
 
 .stat-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 20px;
   margin-bottom: 4px;
 }
 
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
 .stat-label {
-  font-size: 12px;
+  font-size: 10px;
   color: #666666;
   font-weight: 500;
 }
 
+/* Period Selector */
+.period-selector {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.period-btn {
+  padding: 6px 12px;
+  background: white;
+  color: #666666;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.period-btn:hover {
+  background: #F5F5F5;
+  border-color: #666666;
+}
+
+.period-btn.active {
+  background: black;
+  color: white;
+  border-color: black;
+}
+
+/* Date Picker */
+.date-picker-container {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #F9F9F9;
+  border-radius: 8px;
+}
+
+.date-picker-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-picker-wrapper label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.date-picker-input {
+  padding: 6px 10px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  min-width: 130px;
+  font-family: inherit;
+}
+
+.date-picker-input:hover {
+  border-color: #666666;
+}
+
+.date-picker-input:focus {
+  outline: none;
+  border-color: black;
+}
+
+.date-picker-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
 /* Sections */
 .section {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .section h2 {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
-/* Stat Rows */
+/* Stat Rows (Progress Bars) */
 .stat-row {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .stat-row-label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
-  font-size: 14px;
+  margin-bottom: 4px;
+  font-size: 13px;
 }
 
 .stat-row-label span:first-child {
@@ -127,14 +205,14 @@
 }
 
 .stat-row-count {
-  font-size: 12px;
+  font-size: 11px;
   color: #666666;
 }
 
 /* Progress Bar */
 .progress-bar-container {
   width: 100%;
-  height: 24px;
+  height: 20px;
   background: #F5F5F5;
   border-radius: 4px;
   overflow: hidden;
@@ -148,19 +226,27 @@
   align-items: center;
   justify-content: center;
   transition: width 0.3s ease;
-  min-width: 40px;
 }
 
 .progress-bar-text {
   color: white;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
+}
+
+.progress-bar-text-zero {
+  color: #666666;
+  font-size: 10px;
+  font-weight: 600;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 /* Heatmap */
 .heatmap {
   display: grid;
-  grid-template-columns: repeat(18, 1fr);
   gap: 3px;
 }
 
@@ -182,22 +268,24 @@
 }
 
 .heatmap-cell:hover {
-  transform: scale(1.1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: scale(1.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
 }
 
 /* Info Section */
 .info-section {
   border-top: 1px solid #E5E5E5;
-  padding-top: 16px;
+  padding-top: 12px;
+  margin-bottom: 0;
 }
 
 .info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  font-size: 14px;
+  padding: 4px 0;
+  font-size: 13px;
 }
 
 .info-label {

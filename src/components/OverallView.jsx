@@ -1,50 +1,88 @@
 import { useState } from 'react';
-import { getHabits } from '../utils/storage';
-import { getHabitLogs } from '../utils/storage';
+import { getHabits, getHabitLogs } from '../utils/storage';
 import { formatDate } from '../utils/dateHelpers';
 import './OverallView.css';
 
 function OverallView({ onBack }) {
   const habits = getHabits();
-  const [selectedPeriod, setSelectedPeriod] = useState(90); // 7, 30, 90, 180, 365
+  const [selectedPeriod, setSelectedPeriod] = useState(90);
+  const [customRange, setCustomRange] = useState(false);
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 90);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  // Get total days in current range
+  const getTotalDays = () => {
+    if (customRange) {
+      return Math.floor((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    return selectedPeriod;
+  };
 
   // Generate heatmap data for all habits
   const generateHeatmapData = () => {
     const days = [];
-    for (let i = selectedPeriod - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = formatDate(date);
+    
+    if (customRange) {
+      const start = new Date(startDate + 'T00:00:00');
+      const totalDays = getTotalDays();
       
-      // Count how many habits were completed this day
-      let completedCount = 0;
-      habits.forEach(habit => {
-        const logs = getHabitLogs(habit.id);
-        if (logs[dateStr]) completedCount++;
-      });
+      for (let i = 0; i < totalDays; i++) {
+        const date = new Date(start);
+        date.setDate(date.getDate() + i);
+        const dateStr = formatDate(date);
+        
+        let completedCount = 0;
+        habits.forEach(habit => {
+          const logs = getHabitLogs(habit.id);
+          if (logs[dateStr]) completedCount++;
+        });
 
-      days.push({
-        date: dateStr,
-        completedCount,
-        totalHabits: habits.length,
-        percentage: habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0
-      });
+        days.push({
+          date: dateStr,
+          completedCount,
+          totalHabits: habits.length,
+          percentage: habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0
+        });
+      }
+    } else {
+      for (let i = selectedPeriod - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = formatDate(date);
+        
+        let completedCount = 0;
+        habits.forEach(habit => {
+          const logs = getHabitLogs(habit.id);
+          if (logs[dateStr]) completedCount++;
+        });
+
+        days.push({
+          date: dateStr,
+          completedCount,
+          totalHabits: habits.length,
+          percentage: habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0
+        });
+      }
     }
+    
     return days;
   };
 
-  const heatmapData = generateHeatmapData();
-
   // Calculate overall stats
-  const calculateOverallStats = () => {
+  const calculateOverallStats = (heatmapData) => {
     let totalCompletions = 0;
     let totalPossible = 0;
     let perfectDays = 0;
     let currentStreak = 0;
     let longestStreak = 0;
-
-    // Count perfect days and streaks
     let tempStreak = 0;
+
     for (let i = heatmapData.length - 1; i >= 0; i--) {
       const day = heatmapData[i];
       totalCompletions += day.completedCount;
@@ -74,8 +112,6 @@ function OverallView({ onBack }) {
     };
   };
 
-  const stats = calculateOverallStats();
-
   // Get color intensity for heatmap cell
   const getHeatmapColor = (percentage) => {
     if (percentage === 0) return 'level-0';
@@ -94,7 +130,9 @@ function OverallView({ onBack }) {
   };
 
   // Calculate habit-specific stats
-  const getHabitStats = () => {
+  const getHabitStats = (heatmapData) => {
+    const totalDays = getTotalDays();
+    
     return habits.map(habit => {
       const logs = getHabitLogs(habit.id);
       let completions = 0;
@@ -103,26 +141,49 @@ function OverallView({ onBack }) {
         if (logs[day.date]) completions++;
       });
 
-      const rate = selectedPeriod > 0 ? Math.round((completions / selectedPeriod) * 100) : 0;
+      const rate = totalDays > 0 ? Math.round((completions / totalDays) * 100) : 0;
 
       return {
         habit,
         completions,
         rate
       };
-    }).sort((a, b) => b.rate - a.rate); // Sort by completion rate
+    }).sort((a, b) => b.rate - a.rate);
   };
-
-  const habitStats = getHabitStats();
 
   // Calculate columns for heatmap grid
   const getGridColumns = () => {
-    if (selectedPeriod === 7) return 7;
-    if (selectedPeriod === 30) return 10;
-    if (selectedPeriod === 90) return 18;
-    if (selectedPeriod === 180) return 20;
+    const totalDays = getTotalDays();
+    if (totalDays <= 7) return 7;
+    if (totalDays <= 30) return 10;
+    if (totalDays <= 60) return 15;
+    if (totalDays <= 90) return 18;
     return 26;
   };
+
+  // Handle preset period selection
+  const handlePeriodSelect = (period) => {
+    setSelectedPeriod(period);
+    setCustomRange(false);
+  };
+
+  // Render progress bar
+  const ProgressBar = ({ rate }) => (
+    <div className="progress-bar-container">
+      <div className="progress-bar-fill" style={{ width: `${rate}%` }}>
+        <span className="progress-bar-text">{rate}%</span>
+      </div>
+    </div>
+  );
+
+  const heatmapData = generateHeatmapData();
+  const stats = calculateOverallStats(heatmapData);
+  const habitStats = getHabitStats(heatmapData);
+  const totalDays = getTotalDays();
+
+  const displayPeriodText = customRange 
+    ? `${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    : `Last ${selectedPeriod} Days`;
 
   return (
     <div className="overall-view">
@@ -137,36 +198,63 @@ function OverallView({ onBack }) {
         {/* Period Selector */}
         <div className="period-selector">
           <button
-            className={`period-btn ${selectedPeriod === 7 ? 'active' : ''}`}
-            onClick={() => setSelectedPeriod(7)}
+            className={`period-btn ${selectedPeriod === 7 && !customRange ? 'active' : ''}`}
+            onClick={() => handlePeriodSelect(7)}
           >
             7 Days
           </button>
           <button
-            className={`period-btn ${selectedPeriod === 30 ? 'active' : ''}`}
-            onClick={() => setSelectedPeriod(30)}
+            className={`period-btn ${selectedPeriod === 30 && !customRange ? 'active' : ''}`}
+            onClick={() => handlePeriodSelect(30)}
           >
             30 Days
           </button>
           <button
-            className={`period-btn ${selectedPeriod === 90 ? 'active' : ''}`}
-            onClick={() => setSelectedPeriod(90)}
+            className={`period-btn ${selectedPeriod === 60 && !customRange ? 'active' : ''}`}
+            onClick={() => handlePeriodSelect(60)}
+          >
+            60 Days
+          </button>
+          <button
+            className={`period-btn ${selectedPeriod === 90 && !customRange ? 'active' : ''}`}
+            onClick={() => handlePeriodSelect(90)}
           >
             90 Days
           </button>
           <button
-            className={`period-btn ${selectedPeriod === 180 ? 'active' : ''}`}
-            onClick={() => setSelectedPeriod(180)}
+            className={`period-btn ${customRange ? 'active' : ''}`}
+            onClick={() => setCustomRange(true)}
           >
-            6 Months
-          </button>
-          <button
-            className={`period-btn ${selectedPeriod === 365 ? 'active' : ''}`}
-            onClick={() => setSelectedPeriod(365)}
-          >
-            1 Year
+            Custom
           </button>
         </div>
+
+        {/* Custom Date Range Picker */}
+        {customRange && (
+          <div className="date-picker-container">
+            <div className="date-picker-wrapper">
+              <label>Start Date:</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={endDate}
+                className="date-picker-input"
+              />
+            </div>
+            <div className="date-picker-wrapper">
+              <label>End Date:</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+                max={new Date().toISOString().split('T')[0]}
+                className="date-picker-input"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="stats-overview">
@@ -194,7 +282,7 @@ function OverallView({ onBack }) {
 
         {/* Heatmap */}
         <div className="section">
-          <h2>Activity Heatmap</h2>
+          <h2>Activity Heatmap - {displayPeriodText}</h2>
           <div 
             className="heatmap-large" 
             style={{ gridTemplateColumns: `repeat(${getGridColumns()}, 1fr)` }}
@@ -233,7 +321,7 @@ function OverallView({ onBack }) {
                   <span className="ranking-name">{item.habit.name}</span>
                 </div>
                 <div className="ranking-stats">
-                  <span className="ranking-count">{item.completions}/{selectedPeriod}</span>
+                  <span className="ranking-count">{item.completions}/{totalDays}</span>
                   <div className="ranking-bar-container">
                     <div 
                       className="ranking-bar" 
@@ -262,7 +350,7 @@ function OverallView({ onBack }) {
             <div className="insight-card">
               <div className="insight-label">Average per Day</div>
               <div className="insight-value">
-                {habits.length > 0 ? (stats.totalCompletions / selectedPeriod).toFixed(1) : 0}
+                {habits.length > 0 ? (stats.totalCompletions / totalDays).toFixed(1) : 0}
               </div>
             </div>
           </div>

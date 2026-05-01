@@ -6,74 +6,72 @@ import './HabitDetailView.css';
 function HabitDetailView({ habit, onBack, onEdit }) {
   if (!habit) return null;
 
+  const [heatmapPeriod, setHeatmapPeriod] = useState(30);
+  const [customRange, setCustomRange] = useState(false);
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
   const logs = getHabitLogs(habit.id);
   const currentStreak = calculateCurrentStreak(logs);
   const longestStreak = calculateLongestStreak(logs);
 
-  // Get earliest completion date
-  const completedDates = Object.keys(logs).filter(date => logs[date]).sort();
-  const earliestCompletionDate = completedDates.length > 0 ? completedDates[0] : null;
-
-  // Calculate completion stats based on earliest completion
-  const getCompletionStatsFromEarliest = () => {
-    if (!earliestCompletionDate) {
-      return {
-        last7: { completed: 0, total: 0, rate: 0 },
-        last30: { completed: 0, total: 0, rate: 0 },
-        last90: { completed: 0, total: 0, rate: 0 },
-        allTime: { completed: 0, total: 0, rate: 0 }
-      };
-    }
-
-    const today = new Date();
-    const startDate = new Date(earliestCompletionDate + 'T00:00:00');
-
-    const getLast = (days) => {
-      let completed = 0;
-      let total = 0;
-      for (let i = 0; i < days; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = formatDate(date);
-        
-        // Only count if it's after the earliest completion
-        if (date >= startDate) {
-          total++;
-          if (logs[dateStr]) completed++;
-        }
-      }
-      return { completed, total, rate: total > 0 ? Math.round((completed / total) * 100) : 0 };
-    };
-
-    const getAllTime = () => {
-      const daysSinceEarliest = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
-      let completed = 0;
-      for (let i = 0; i < daysSinceEarliest; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
-        const dateStr = formatDate(date);
-        if (logs[dateStr]) completed++;
-      }
-      return { completed, total: daysSinceEarliest, rate: Math.round((completed / daysSinceEarliest) * 100) };
-    };
-
-    return {
-      last7: getLast(7),
-      last30: getLast(30),
-      last90: getLast(90),
-      allTime: getAllTime()
-    };
-  };
-
-  const stats = getCompletionStatsFromEarliest();
-
   // Calculate total completions
   const totalCompletions = Object.values(logs).filter(completed => completed).length;
 
-  // Get days since earliest completion
-  const daysSinceEarliest = earliestCompletionDate 
-    ? Math.floor((new Date() - new Date(earliestCompletionDate + 'T00:00:00')) / (1000 * 60 * 60 * 24)) + 1
-    : 0;
+  // Calculate completion stats for last N days
+  const getLastNDaysStats = (days) => {
+    let completed = 0;
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = formatDate(date);
+      if (logs[dateStr]) completed++;
+    }
+    return { 
+      completed, 
+      total: days, 
+      rate: Math.round((completed / days) * 100) 
+    };
+  };
+
+  // Calculate rate since created
+  const getSinceCreatedRate = () => {
+    const startDate = new Date(habit.createdAt);
+    const today = new Date();
+    const daysSince = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    
+    let completed = 0;
+    for (let i = 0; i < daysSince; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = formatDate(date);
+      if (logs[dateStr]) completed++;
+    }
+    
+    return daysSince > 0 ? Math.round((completed / daysSince) * 100) : 0;
+  };
+
+  const stats = {
+    last7: getLastNDaysStats(7),
+    last30: getLastNDaysStats(30),
+    last60: getLastNDaysStats(60),
+    last90: getLastNDaysStats(90),
+    sinceCreatedRate: getSinceCreatedRate()
+  };
+
+  // Get total days in heatmap period
+  const getHeatmapTotalDays = () => {
+    if (customRange) {
+      return Math.floor((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    return heatmapPeriod;
+  };
 
   // Format creation date
   const formatCreationDate = () => {
@@ -82,10 +80,9 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     return createdDate.toLocaleDateString('en-US', options);
   };
 
-  // Format earliest completion date
-  const formatEarliestDate = () => {
-    if (!earliestCompletionDate) return 'N/A';
-    const date = new Date(earliestCompletionDate + 'T00:00:00');
+  // Format date for tooltip (e.g., "April 22, 2026")
+  const formatDateForTooltip = (dateStr) => {
+    const date = new Date(dateStr + 'T00:00:00');
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
   };
@@ -93,26 +90,66 @@ function HabitDetailView({ habit, onBack, onEdit }) {
   // Render progress bar
   const ProgressBar = ({ rate }) => (
     <div className="progress-bar-container">
-      <div className="progress-bar-fill" style={{ width: `${rate}%` }}>
-        <span className="progress-bar-text">{rate}%</span>
+      <div 
+        className="progress-bar-fill" 
+        style={{ width: `${rate}%`, minWidth: rate > 0 ? '40px' : '0px' }}
+      >
+        {rate > 0 && <span className="progress-bar-text">{rate}%</span>}
       </div>
+      {rate === 0 && (
+        <span className="progress-bar-text-zero">0%</span>
+      )}
     </div>
   );
 
-  // Generate mini heatmap (last 90 days)
+  // Generate heatmap based on selected period
   const generateHeatmap = () => {
-    const days = [];
-    for (let i = 89; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = formatDate(date);
-      const isCompleted = logs[dateStr] || false;
-      days.push({ date: dateStr, completed: isCompleted });
+    const result = [];
+    const totalDays = getHeatmapTotalDays();
+
+    if (customRange) {
+      const start = new Date(startDate + 'T00:00:00');
+      for (let i = 0; i < totalDays; i++) {
+        const date = new Date(start);
+        date.setDate(date.getDate() + i);
+        const dateStr = formatDate(date);
+        const isCompleted = logs[dateStr] || false;
+        result.push({ date: dateStr, completed: isCompleted });
+      }
+    } else {
+      for (let i = heatmapPeriod - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = formatDate(date);
+        const isCompleted = logs[dateStr] || false;
+        result.push({ date: dateStr, completed: isCompleted });
+      }
     }
-    return days;
+    return result;
   };
 
   const heatmapDays = generateHeatmap();
+
+  // Calculate grid columns based on period
+  const getHeatmapColumns = () => {
+    const totalDays = getHeatmapTotalDays();
+    if (totalDays <= 7) return 7;
+    if (totalDays <= 30) return 10;
+    if (totalDays <= 60) return 15;
+    if (totalDays <= 90) return 18;
+    return 20;
+  };
+
+  // Handle period selection
+  const handlePeriodSelect = (period) => {
+    setHeatmapPeriod(period);
+    setCustomRange(false);
+  };
+
+  // Display text for the heatmap period
+  const heatmapPeriodText = customRange 
+    ? `${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    : `Last ${heatmapPeriod} Days`;
 
   return (
     <div className="habit-detail">
@@ -125,33 +162,38 @@ function HabitDetailView({ habit, onBack, onEdit }) {
           <h1>{habit.name}</h1>
         </div>
         <button className="btn-edit-detail" onClick={() => onEdit(habit)}>
-          ✏️ Edit
+          ✏️
         </button>
       </div>
 
       <div className="detail-content">
-        {/* Streak Cards */}
+        {/* Stats Grid - 4 cards (always all-time) */}
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-icon">🔥</div>
             <div className="stat-value">{currentStreak}</div>
-            <div className="stat-label">Current Streak</div>
+            <div className="stat-label">Current</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">🏆</div>
             <div className="stat-value">{longestStreak}</div>
-            <div className="stat-label">Longest Streak</div>
+            <div className="stat-label">Longest</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">✓</div>
             <div className="stat-value">{totalCompletions}</div>
-            <div className="stat-label">Total Completions</div>
+            <div className="stat-label">Total</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon">📈</div>
+            <div className="stat-value">{stats.sinceCreatedRate}%</div>
+            <div className="stat-label">Since Created</div>
           </div>
         </div>
 
-        {/* Completion Rates */}
+        {/* Completion Rates - All 4 periods */}
         <div className="section">
-          <h2>Completion Rate</h2>
+          <h2>📈 Completion Rate</h2>
           
           <div className="stat-row">
             <div className="stat-row-label">
@@ -171,30 +213,94 @@ function HabitDetailView({ habit, onBack, onEdit }) {
 
           <div className="stat-row">
             <div className="stat-row-label">
+              <span>Last 60 days</span>
+              <span className="stat-row-count">{stats.last60.completed}/{stats.last60.total}</span>
+            </div>
+            <ProgressBar rate={stats.last60.rate} />
+          </div>
+
+          <div className="stat-row">
+            <div className="stat-row-label">
               <span>Last 90 days</span>
               <span className="stat-row-count">{stats.last90.completed}/{stats.last90.total}</span>
             </div>
             <ProgressBar rate={stats.last90.rate} />
           </div>
-
-          <div className="stat-row">
-            <div className="stat-row-label">
-              <span>All time</span>
-              <span className="stat-row-count">{stats.allTime.completed}/{stats.allTime.total}</span>
-            </div>
-            <ProgressBar rate={stats.allTime.rate} />
-          </div>
         </div>
 
-        {/* Heatmap */}
+        {/* Heatmap with Period Selector */}
         <div className="section">
-          <h2>Last 90 Days</h2>
-          <div className="heatmap">
-            {heatmapDays.map((day, index) => (
+          <h2>🗓️ {heatmapPeriodText}</h2>
+          
+          <div className="period-selector">
+            <button
+              className={`period-btn ${heatmapPeriod === 7 && !customRange ? 'active' : ''}`}
+              onClick={() => handlePeriodSelect(7)}
+            >
+              7 Days
+            </button>
+            <button
+              className={`period-btn ${heatmapPeriod === 30 && !customRange ? 'active' : ''}`}
+              onClick={() => handlePeriodSelect(30)}
+            >
+              30 Days
+            </button>
+            <button
+              className={`period-btn ${heatmapPeriod === 60 && !customRange ? 'active' : ''}`}
+              onClick={() => handlePeriodSelect(60)}
+            >
+              60 Days
+            </button>
+            <button
+              className={`period-btn ${heatmapPeriod === 90 && !customRange ? 'active' : ''}`}
+              onClick={() => handlePeriodSelect(90)}
+            >
+              90 Days
+            </button>
+            <button
+              className={`period-btn ${customRange ? 'active' : ''}`}
+              onClick={() => setCustomRange(true)}
+            >
+              Custom
+            </button>
+          </div>
+
+          {/* Custom Date Range Picker */}
+          {customRange && (
+            <div className="date-picker-container">
+              <div className="date-picker-wrapper">
+                <label>Start Date:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  max={endDate}
+                  className="date-picker-input"
+                />
+              </div>
+              <div className="date-picker-wrapper">
+                <label>End Date:</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="date-picker-input"
+                />
+              </div>
+            </div>
+          )}
+
+          <div 
+            className="heatmap"
+            style={{ gridTemplateColumns: `repeat(${getHeatmapColumns()}, 1fr)` }}
+          >
+            {heatmapDays.map((day) => (
               <div
                 key={day.date}
                 className={`heatmap-cell ${day.completed ? 'completed' : 'empty'}`}
-                title={`${day.date}${day.completed ? ' ✓' : ''}`}
+                title={`${formatDateForTooltip(day.date)}${day.completed ? ' ✓' : ''}`}
               />
             ))}
           </div>
@@ -203,16 +309,8 @@ function HabitDetailView({ habit, onBack, onEdit }) {
         {/* Info */}
         <div className="section info-section">
           <div className="info-row">
-            <span className="info-label">Created:</span>
+            <span className="info-label">Created</span>
             <span className="info-value">{formatCreationDate()}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">First completion:</span>
-            <span className="info-value">{formatEarliestDate()}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Days tracked:</span>
-            <span className="info-value">{daysSinceEarliest} days</span>
           </div>
         </div>
       </div>
