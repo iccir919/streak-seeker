@@ -4,28 +4,28 @@ import './HabitModal.css';
 const EMOJI_OPTIONS = [
   '💪', '📚', '🧘', '🏃', '🎯', '✍️', 
   '🎨', '💻', '🍎', '💤', '🎵', '🌱',
-  '⭐', '🔥', '💡', '🚀', '🧠', '☕'
+  '⭐', '🔥', '💡', '🚀', '🧠'
 ];
 
-// Helper function to check if string contains emoji
+// Edit mode: just show top 5 presets
+const EDIT_EMOJI_PRESETS = ['💪', '📚', '🧘', '🏃', '🎯'];
+
 const isEmoji = (str) => {
   const emojiRegex = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu;
   return emojiRegex.test(str);
 };
 
-function HabitModal({ isOpen, onClose, onSave, onDelete, habit = null }) {
+function HabitModal({ isOpen, onClose, onSave, onDelete, onArchive, onUnarchive, habit = null }) {
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('⭐');
   const [customEmoji, setCustomEmoji] = useState('');
   const [customEmojiError, setCustomEmojiError] = useState(false);
 
-  // Update form when habit changes
   useEffect(() => {
     if (habit) {
       setName(habit.name);
       setIcon(habit.icon);
       
-      // If the icon is not in the default options, it's a custom emoji
       if (!EMOJI_OPTIONS.includes(habit.icon)) {
         setCustomEmoji(habit.icon);
       } else {
@@ -47,31 +47,30 @@ function HabitModal({ isOpen, onClose, onSave, onDelete, habit = null }) {
       return;
     }
 
-    if (!icon) {
-      alert('Please select an icon');
-      return;
-    }
-
-    if (!isEmoji(icon)) {
+    if (!icon || !isEmoji(icon)) {
       alert('Icon must be an emoji');
       return;
     }
 
     onSave({ name: name.trim(), icon });
     onClose();
-    
-    // Reset form
-    setName('');
-    setIcon('⭐');
-    setCustomEmoji('');
-    setCustomEmojiError(false);
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Delete "${habit.name}"? This cannot be undone.`)) {
+    if (window.confirm(`Delete "${habit.name}"? This will permanently delete the habit and all its history. This cannot be undone.`)) {
       onDelete(habit.id);
       onClose();
     }
+  };
+
+  const handleArchive = () => {
+    onArchive(habit.id);
+    onClose();
+  };
+
+  const handleUnarchive = () => {
+    onUnarchive(habit.id);
+    onClose();
   };
 
   const handleCustomEmojiChange = (e) => {
@@ -92,11 +91,16 @@ function HabitModal({ isOpen, onClose, onSave, onDelete, habit = null }) {
 
   if (!isOpen) return null;
 
+  const isArchived = habit?.archived;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{habit ? 'Edit Habit' : 'New Habit'}</h2>
+          <h2>
+            {habit ? 'Edit Habit' : 'New Habit'}
+            {isArchived && <span className="archived-badge">Archived</span>}
+          </h2>
           <button className="modal-close" onClick={onClose}>
             ×
           </button>
@@ -119,56 +123,109 @@ function HabitModal({ isOpen, onClose, onSave, onDelete, habit = null }) {
 
           <div className="form-group">
             <label>Icon</label>
-            <div className="emoji-grid">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  className={`emoji-btn ${icon === emoji ? 'selected' : ''}`}
-                  onClick={() => {
-                    setIcon(emoji);
-                    setCustomEmoji('');
-                    setCustomEmojiError(false);
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-              
-              {/* Custom emoji as last grid item */}
-              <input
-                type="text"
-                className={`emoji-btn custom-emoji-btn ${customEmojiError ? 'error' : ''} ${customEmoji && !EMOJI_OPTIONS.includes(icon) ? 'selected' : ''}`}
-                value={customEmoji}
-                onChange={handleCustomEmojiChange}
-                placeholder="+"
-                maxLength="4"
-                title="Enter custom emoji"
-              />
-            </div>
-            {customEmojiError && (
-              <span className="error-hint">Must be an emoji</span>
+            
+            {/* Edit mode: current display + 5 presets + custom */}
+            {habit ? (
+              <>
+                <div className="current-icon-row">
+                  <span className="current-icon-label">Current:</span>
+                  <span className="current-icon-emoji">{icon}</span>
+                </div>
+                <div className="emoji-grid emoji-grid-edit">
+                  {EDIT_EMOJI_PRESETS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={`emoji-btn ${icon === emoji ? 'selected' : ''}`}
+                      onClick={() => {
+                        setIcon(emoji);
+                        setCustomEmoji('');
+                        setCustomEmojiError(false);
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  
+                  <input
+                    type="text"
+                    className={`emoji-btn custom-emoji-btn ${customEmojiError ? 'error' : ''} ${customEmoji && !EDIT_EMOJI_PRESETS.includes(icon) ? 'selected' : ''}`}
+                    value={customEmoji}
+                    onChange={handleCustomEmojiChange}
+                    placeholder="+"
+                    maxLength="4"
+                    title="Enter custom emoji"
+                  />
+                </div>
+                {customEmojiError && (
+                  <span className="error-hint">Must be an emoji</span>
+                )}
+              </>
+            ) : (
+              /* New habit: full picker */
+              <>
+                <div className="emoji-grid">
+                  {EMOJI_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={`emoji-btn ${icon === emoji ? 'selected' : ''}`}
+                      onClick={() => {
+                        setIcon(emoji);
+                        setCustomEmoji('');
+                        setCustomEmojiError(false);
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  
+                  <input
+                    type="text"
+                    className={`emoji-btn custom-emoji-btn ${customEmojiError ? 'error' : ''} ${customEmoji && !EMOJI_OPTIONS.includes(icon) ? 'selected' : ''}`}
+                    value={customEmoji}
+                    onChange={handleCustomEmojiChange}
+                    placeholder="+"
+                    maxLength="4"
+                    title="Enter custom emoji"
+                  />
+                </div>
+                {customEmojiError && (
+                  <span className="error-hint">Must be an emoji</span>
+                )}
+              </>
             )}
           </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary">
-              {habit ? 'Save' : 'Create'}
-            </button>
-          </div>
+          <button type="submit" className="btn-primary-full">
+            {habit ? 'Save' : 'Create Habit'}
+          </button>
 
-          {/* Delete button at bottom - only shown when editing */}
           {habit && (
-            <div className="modal-delete-section">
+            <div className="modal-secondary-actions">
+              {isArchived ? (
+                <button 
+                  type="button" 
+                  className="btn-archive"
+                  onClick={handleUnarchive}
+                >
+                  Unarchive
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  className="btn-archive"
+                  onClick={handleArchive}
+                >
+                  Archive
+                </button>
+              )}
               <button 
                 type="button" 
                 className="btn-delete-bottom" 
                 onClick={handleDelete}
               >
-                Delete Habit
+                Delete
               </button>
             </div>
           )}

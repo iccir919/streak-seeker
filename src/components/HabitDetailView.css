@@ -43,7 +43,7 @@
 }
 
 .btn-edit-detail {
-  padding: 6px 10px;
+  padding: 6px 14px;
   background: white;
   color: black;
   border: 1px solid #E5E5E5;
@@ -313,4 +313,14 @@
 
 .detail-content::-webkit-scrollbar-thumb:hover {
   background: #D0D0D0;
+}
+
+.archived-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: #999999;
+  padding: 2px 8px;
+  background: #F5F5F5;
+  border-radius: 3px;
+  margin-left: 8px;
 }

@@ -24,6 +24,27 @@ function HabitDetailView({ habit, onBack, onEdit }) {
   // Calculate total completions
   const totalCompletions = Object.values(logs).filter(completed => completed).length;
 
+  // Get the earliest date this habit was active (createdAt or earliest log)
+  const getHabitStartDate = () => {
+    const logDates = Object.keys(logs).filter(d => logs[d]).sort();
+    
+    let earliestDate = null;
+    
+    if (habit.createdAt) {
+      earliestDate = new Date(habit.createdAt);
+    }
+    
+    // If there's a log earlier than createdAt, use that instead
+    if (logDates.length > 0) {
+      const earliestLog = new Date(logDates[0] + 'T00:00:00');
+      if (!earliestDate || earliestLog < earliestDate) {
+        earliestDate = earliestLog;
+      }
+    }
+    
+    return earliestDate;
+  };
+
   // Calculate completion stats for last N days
   const getLastNDaysStats = (days) => {
     let completed = 0;
@@ -40,9 +61,11 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     };
   };
 
-  // Calculate rate since created
+  // Calculate rate since habit started (using earliest log or createdAt)
   const getSinceCreatedRate = () => {
-    const startDate = new Date(habit.createdAt);
+    const startDate = getHabitStartDate();
+    if (!startDate) return 0;
+    
     const today = new Date();
     const daysSince = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
     
@@ -73,11 +96,21 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     return heatmapPeriod;
   };
 
-  // Format creation date
-  const formatCreationDate = () => {
-    const createdDate = new Date(habit.createdAt);
+  // Format start date (using earliest known date)
+  const formatStartDate = () => {
+    const startDate = getHabitStartDate();
+    if (!startDate) return 'Unknown';
+    
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return createdDate.toLocaleDateString('en-US', options);
+    return startDate.toLocaleDateString('en-US', options);
+  };
+
+  // Format archive date
+  const formatArchiveDate = () => {
+    if (!habit.archivedAt) return null;
+    const date = new Date(habit.archivedAt);
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
   };
 
   // Format date for tooltip (e.g., "April 22, 2026")
@@ -160,14 +193,15 @@ function HabitDetailView({ habit, onBack, onEdit }) {
         <div className="detail-title">
           <span className="detail-icon">{habit.icon}</span>
           <h1>{habit.name}</h1>
+          {habit.archived && <span className="archived-badge">Archived</span>}
         </div>
         <button className="btn-edit-detail" onClick={() => onEdit(habit)}>
-          ✏️
+          Edit
         </button>
       </div>
 
       <div className="detail-content">
-        {/* Stats Grid - 4 cards (always all-time) */}
+        {/* Stats Grid - 4 cards */}
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-icon">🔥</div>
@@ -309,9 +343,15 @@ function HabitDetailView({ habit, onBack, onEdit }) {
         {/* Info */}
         <div className="section info-section">
           <div className="info-row">
-            <span className="info-label">Created</span>
-            <span className="info-value">{formatCreationDate()}</span>
+            <span className="info-label">Tracking since</span>
+            <span className="info-value">{formatStartDate()}</span>
           </div>
+          {habit.archived && habit.archivedAt && (
+            <div className="info-row">
+              <span className="info-label">Archived</span>
+              <span className="info-value">{formatArchiveDate()}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

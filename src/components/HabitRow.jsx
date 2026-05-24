@@ -4,7 +4,7 @@ import { getDayOfWeek, calculateCurrentStreak } from '../utils/dateHelpers';
 import { getHabitLogs } from '../utils/storage';
 import './HabitRow.css';
 
-function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit }) {
+function HabitRow({ habit, dates, today, onToggle, onHabitClick }) {
   const logs = getHabitLogs(habit.id);
   const currentStreak = calculateCurrentStreak(logs);
 
@@ -21,11 +21,6 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit }) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  };
-
-  const handleEdit = (e) => {
-    e.stopPropagation();
-    onEdit(habit);
   };
 
   // Check if a date is part of the current streak
@@ -57,17 +52,6 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit }) {
         </button>
       </div>
 
-      {/* Edit button - between drag and emoji */}
-      <div className="habit-edit-col">
-        <button 
-          className="action-btn edit-btn" 
-          onClick={handleEdit}
-          title="Edit habit"
-        >
-          ✏️
-        </button>
-      </div>
-
       {/* Info column - Icon only */}
       <div className="habit-info-col">
         <button 
@@ -83,15 +67,14 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit }) {
       {dates.map((date) => {
         const isCompleted = logs[date] || false;
         const isStreak = isPartOfStreak(date);
-        const isTodayDate = date === today;
         const dayOfWeek = getDayOfWeek(date);
         
         return (
-          <div key={date} className={`day-col ${isTodayDate ? 'today-col' : ''}`}>
+          <div key={date} className="day-col">
             <button
-              className={`checkbox ${isCompleted ? 'checked' : ''} ${isStreak ? 'streak' : ''} ${isTodayDate ? 'today' : ''}`}
+              className={`checkbox ${isCompleted ? 'checked' : ''} ${isStreak ? 'streak' : ''}`}
               onClick={() => onToggle(habit.id, date)}
-              title={`${dayOfWeek} ${date}${isStreak ? ' - On streak! 🔥' : ''}${isTodayDate ? ' (Today)' : ''}`}
+              title={`${dayOfWeek} ${date}${isStreak ? ' - On streak! 🔥' : ''}`}
             >
               {isCompleted && (isStreak ? '🔥' : '✓')}
             </button>

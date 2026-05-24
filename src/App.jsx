@@ -3,7 +3,16 @@ import HabitList from './components/HabitList';
 import HabitModal from './components/HabitModal';
 import HabitDetailView from './components/HabitDetailView';
 import OverallView from './components/OverallView';
-import { getHabits, toggleCompletion, addHabit, updateHabit, deleteHabit, reorderHabits } from './utils/storage';
+import { 
+  getHabits, 
+  toggleCompletion, 
+  addHabit, 
+  updateHabit, 
+  deleteHabit, 
+  reorderHabits,
+  archiveHabit,
+  unarchiveHabit
+} from './utils/storage';
 import './App.css';
 
 function App() {
@@ -54,6 +63,18 @@ function App() {
     setView('main');
   };
 
+  const handleArchiveHabit = (habitId) => {
+    archiveHabit(habitId);
+    loadHabits();
+    setView('main');
+  };
+
+  const handleUnarchiveHabit = (habitId) => {
+    unarchiveHabit(habitId);
+    loadHabits();
+    setView('main');
+  };
+
   const handleHabitClick = (habitId) => {
     setSelectedHabitId(habitId);
     setView('detail');
@@ -65,11 +86,11 @@ function App() {
   };
 
   const handleNavigatePrevious = () => {
-    setDateOffset(prev => prev - 12);
+    setDateOffset(prev => prev - 10); 
   };
 
   const handleNavigateNext = () => {
-    setDateOffset(prev => Math.min(prev + 12, 0));
+    setDateOffset(prev => Math.min(prev + 10, 0)); 
   };
 
   const handleBackToMain = () => {
@@ -89,6 +110,7 @@ function App() {
   };
 
   const selectedHabit = habits.find(h => h.id === selectedHabitId);
+  const activeHabits = habits.filter(h => !h.archived);
 
   // Main view
   if (view === 'main') {
@@ -105,7 +127,7 @@ function App() {
         </div>
 
         <div className="main">
-          {habits.length === 0 ? (
+          {activeHabits.length === 0 && habits.filter(h => h.archived).length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">🔥</div>
               <h2>Ready to build a streak?</h2>
@@ -146,7 +168,7 @@ function App() {
           )}
         </div>
 
-        {habits.length > 0 && (
+        {activeHabits.length > 0 && (
           <div className="footer">
             <button 
               className="btn-heatmap"
@@ -162,6 +184,8 @@ function App() {
           onClose={handleCloseModal}
           onSave={handleSaveHabit}
           onDelete={handleDeleteHabit}
+          onArchive={handleArchiveHabit}
+          onUnarchive={handleUnarchiveHabit}
           habit={editingHabit}
         />
       </div>
@@ -192,6 +216,8 @@ function App() {
           onClose={handleCloseModal}
           onSave={handleSaveHabit}
           onDelete={handleDeleteHabit}
+          onArchive={handleArchiveHabit}
+          onUnarchive={handleUnarchiveHabit}
           habit={editingHabit}
         />
       </div>

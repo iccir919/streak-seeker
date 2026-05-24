@@ -1,21 +1,22 @@
 /* Grid layout for perfect alignment */
 .habit-grid-header {
   display: grid;
-  grid-template-columns: 18px 80px 18px repeat(12, 24px);
-  column-gap: 4px;
+  grid-template-columns: 100px repeat(10, 30px); 
+  column-gap: 5px;
   row-gap: 0px;
-  padding: 3px 6px 3px 1px;
-  margin-bottom: 2px;
+  padding: 4px;
+  margin-bottom: 4px;
   align-items: center;
+  border: 1px solid transparent;
 }
 
 .habit-grid-row {
   display: grid;
-  grid-template-columns: 18px 18px 80px repeat(12, 24px);
-  column-gap: 4px;
+  grid-template-columns: 16px 58px 16px repeat(10, 30px);
+  column-gap: 5px;
   row-gap: 0px;
   align-items: center;
-  padding: 4px 6px 4px 1px;
+  padding: 4px;
   border: 1px solid #E5E5E5;
   border-radius: 4px;
   margin-bottom: 4px;
@@ -23,9 +24,45 @@
   background: white;
 }
 
-/* Add gap after the icon (3rd child) to match header */
-.habit-grid-row > :nth-child(3) {
-  margin-right: 5px; /* 5px gap before first checkbox */
+/* Nav Section */
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+}
+
+.date-range {
+  font-size: 10px;
+  font-weight: 600;
+  color: #333333;
+  white-space: nowrap;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Navigation buttons */
+.nav-btn {
+  font-size: 11px;
+  padding: 1px 6px;
+  background: white;
+  border: 1px solid #E5E5E5;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #666666;
+}
+
+.nav-btn:hover {
+  background: #F5F5F5;
+  border-color: black;
+  color: black;
 }
 
 /* Actions column LEFT - drag handle */
@@ -47,38 +84,17 @@
   cursor: grabbing;
 }
 
-/* Edit column - between drag and icon */
-.habit-edit-col {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.action-btn {
-  padding: 2px;
-  font-size: 11px;
-  border-radius: 2px;
-  transition: all 0.15s;
-  background: white;
-}
-
-.action-btn:hover {
-  background: #F5F5F5;
-}
-
-.edit-btn:hover {
-  background: #E3F2FD;
-}
-
-/* Info column - icon */
+/* Info column - icon spans 2 cols */
 .habit-info-col {
   display: flex;
   align-items: center;
   justify-content: center;
+  grid-column: span 2;
+  padding-right: 10px;
 }
 
 .habit-icon-btn {
-  font-size: 24px;
+  font-size: 22px;
   padding: 0px;
   flex-shrink: 0;
   text-align: center;
@@ -95,34 +111,37 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0px;
-  padding: 2px;
+  gap: 2px;
+  padding: 4px 0;
   border-radius: 4px;
   border: 2px solid transparent;
   transition: border-color 0.2s;
-  width: 24px;
+  width: 30px;
   box-sizing: border-box;
 }
 
-/* Today indicator in header - light gray outline */
 .day-header-cell.today {
   border-color: #D0D0D0;
   background: #FAFAFA;
 }
 
 .day-header-label {
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 600;
-  color: #666666;
+  color: #333333;
   text-transform: uppercase;
   line-height: 1;
+  text-align: center;
+  width: 100%;
 }
 
 .day-header-date {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   color: #333333;
   line-height: 1;
+  text-align: center;
+  width: 100%;
 }
 
 /* Day columns (checkboxes) */
@@ -134,27 +153,26 @@
   border-radius: 4px;
   border: 2px solid transparent;
   transition: border-color 0.2s;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   box-sizing: border-box;
 }
 
-/* Today indicator in day column - light gray outline */
 .day-col.today-col {
   border-color: #D0D0D0;
   background: #FAFAFA;
 }
 
 .checkbox {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border: 1.5px solid black;
   border-radius: 2px;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 14px;
   transition: all 0.15s;
   flex-shrink: 0;
 }
@@ -168,7 +186,6 @@
   color: white;
 }
 
-/* Streak styling - fire emoji */
 .checkbox.streak {
   background: #FF6B00;
   border-color: #FF6B00;
@@ -177,31 +194,4 @@
 .checkbox.streak:hover {
   background: #FF8C00;
   border-color: #FF8C00;
-}
-
-/* Navigation buttons */
-.nav-btn {
-  font-size: 11px;
-  padding: 1px 2px;
-  background: white;
-  border: 1px solid #E5E5E5;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: #666666;
-  width: 100%;
-}
-
-.nav-btn:hover {
-  background: #F5F5F5;
-  border-color: black;
-  color: black;
-}
-
-/* Date range display */
-.date-range {
-  font-size: 10px;
-  font-weight: 600;
-  color: #333333;
-  text-align: center;
 }

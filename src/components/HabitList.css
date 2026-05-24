@@ -1,5 +1,77 @@
 .habit-list {
   display: flex;
   flex-direction: column;
-  padding-top: 8px;
+  padding-top: 4px;
+}
+
+/* Archived Section */
+.archived-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #E5E5E5;
+}
+
+.archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666666;
+  cursor: pointer;
+  transition: color 0.2s;
+  width: 100%;
+  text-align: left;
+}
+
+.archived-toggle:hover {
+  color: black;
+}
+
+.archived-arrow {
+  font-size: 9px;
+  color: #999999;
+}
+
+.archived-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.archived-habit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  background: #FAFAFA;
+  opacity: 0.7;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.archived-habit-row:hover {
+  opacity: 1;
+  background: #F0F0F0;
+  border-color: #999999;
+}
+
+.archived-habit-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.archived-habit-name {
+  flex: 1;
+  font-size: 13px;
+  color: #666666;
+  font-weight: 500;
 }

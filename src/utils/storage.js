@@ -23,17 +23,17 @@ export const getHabits = () => {
   return data.habits.sort((a, b) => a.order - b.order);
 };
 
-// Add habit
-export const addHabit = (habit) => {
+export const addHabit = (habitData) => {
   const data = getData();
   const newHabit = {
-    id: crypto.randomUUID(),
-    name: habit.name,
-    icon: habit.icon || '⭐',
-    color: habit.color || '#000000',
-    createdAt: new Date().toISOString().split('T')[0],
+    id: generateId(),
+    name: habitData.name,
+    icon: habitData.icon,
+    color: habitData.color || '#000000',
+    createdAt: new Date().toISOString(),
     order: data.habits.length,
-    ...habit
+    archived: false,
+    archivedAt: null
   };
   data.habits.push(newHabit);
   saveData(data);
@@ -102,4 +102,40 @@ export const getHabitLogs = (habitId) => {
     }
   });
   return logs;
+};
+
+// Archive a habit
+export const archiveHabit = (habitId) => {
+  const data = getData();
+  const habit = data.habits.find(h => h.id === habitId);
+  if (habit) {
+    habit.archived = true;
+    habit.archivedAt = new Date().toISOString();
+    saveData(data);
+  }
+};
+
+// Unarchive a habit
+export const unarchiveHabit = (habitId) => {
+  const data = getData();
+  const habit = data.habits.find(h => h.id === habitId);
+  if (habit) {
+    habit.archived = false;
+    habit.archivedAt = null;
+    saveData(data);
+  }
+};
+
+// Get only active (non-archived) habits
+export const getActiveHabits = () => {
+  const habits = getHabits();
+  return habits.filter(h => !h.archived);
+};
+
+// Get only archived habits, sorted by most recent first
+export const getArchivedHabits = () => {
+  const habits = getHabits();
+  return habits
+    .filter(h => h.archived)
+    .sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt));
 };

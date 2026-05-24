@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { getDayOfWeek, getToday } from '../utils/dateHelpers';
@@ -5,14 +6,20 @@ import HabitRow from './HabitRow';
 import './HabitList.css';
 
 function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavigatePrevious, onNavigateNext, onReorder }) {
-  if (habits.length === 0) {
+  const [archivedExpanded, setArchivedExpanded] = useState(false);
+
+  const activeHabits = habits.filter(h => !h.archived);
+  const archivedHabits = habits
+    .filter(h => h.archived)
+    .sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt));
+
+  if (activeHabits.length === 0 && archivedHabits.length === 0) {
     return null;
   }
 
-  // Get dates based on offset
   const getDatesWithOffset = (offset) => {
     const dates = [];
-    for (let i = 11; i >= 0; i--) {
+    for (let i = 9; i >= 0; i--) { 
       const date = new Date();
       date.setDate(date.getDate() + offset - i);
       const year = date.getFullYear();
@@ -26,13 +33,11 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
   const dates = getDatesWithOffset(dateOffset);
   const today = getToday();
 
-  // Get day of month from date string
   const getDayOfMonth = (dateStr) => {
     const date = new Date(dateStr + 'T00:00:00');
     return date.getDate();
   };
 
-  // Format date range for display
   const getDateRange = () => {
     const firstDate = new Date(dates[0] + 'T00:00:00');
     const lastDate = new Date(dates[dates.length - 1] + 'T00:00:00');
@@ -48,68 +53,67 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
 
   const isToday = dateOffset === 0;
 
-  // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     })
   );
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
       const oldIndex = habits.findIndex((habit) => habit.id === active.id);
       const newIndex = habits.findIndex((habit) => habit.id === over.id);
-
       onReorder(oldIndex, newIndex);
     }
   };
 
   return (
     <div className="habit-list">
-      {/* Header Row */}
-      <div className="habit-grid-header">
-        <button className="nav-btn" onClick={onNavigatePrevious} title="Previous period">
-          ←
-        </button>
-        
-        <span className="date-range">{getDateRange()}</span>
-        
-        <button 
-          className="nav-btn" 
-          onClick={onNavigateNext} 
-          title="Next period"
-          disabled={isToday}
-          style={{ opacity: isToday ? 0.3 : 1, cursor: isToday ? 'not-allowed' : 'pointer' }}
-        >
-          →
-        </button>
-
-        {dates.map((date) => {
-          const isTodayDate = date === today;
-          return (
-            <div key={date} className={`day-header-cell ${isTodayDate ? 'today' : ''}`}>
-              <div className="day-header-label">{getDayOfWeek(date)}</div>
-              <div className="day-header-date">{getDayOfMonth(date)}</div>
+      {/* Header Row - only show if there are active habits */}
+      {activeHabits.length > 0 && (
+        <div className="habit-grid-header">
+          <div className="nav-section">
+            <div className="date-range">{getDateRange()}</div>
+            <div className="nav-buttons">
+              <button className="nav-btn" onClick={onNavigatePrevious} title="Previous period">
+                ←
+              </button>
+              <button 
+                className="nav-btn" 
+                onClick={onNavigateNext} 
+                title="Next period"
+                disabled={isToday}
+                style={{ opacity: isToday ? 0.3 : 1, cursor: isToday ? 'not-allowed' : 'pointer' }}
+              >
+                →
+              </button>
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* Habit Rows - Sortable */}
+          {dates.map((date) => {
+            const isTodayDate = date === today;
+            return (
+              <div key={date} className={`day-header-cell ${isTodayDate ? 'today' : ''}`}>
+                <div className="day-header-label">{getDayOfWeek(date)}</div>
+                <div className="day-header-date">{getDayOfMonth(date)}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Active Habits */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={habits.map(h => h.id)}
+          items={activeHabits.map(h => h.id)}
           strategy={verticalListSortingStrategy}
         >
-          {habits.map((habit) => (
+          {activeHabits.map((habit) => (
             <HabitRow
               key={habit.id}
               habit={habit}
@@ -117,11 +121,39 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
               today={today}
               onToggle={onToggle}
               onHabitClick={onHabitClick}
-              onEdit={onEdit}
             />
           ))}
         </SortableContext>
       </DndContext>
+
+      {/* Archived Section */}
+      {archivedHabits.length > 0 && (
+        <div className="archived-section">
+          <button 
+            className="archived-toggle"
+            onClick={() => setArchivedExpanded(!archivedExpanded)}
+          >
+            <span className="archived-arrow">{archivedExpanded ? '▼' : '▶'}</span>
+            <span>Archived ({archivedHabits.length})</span>
+          </button>
+
+          {archivedExpanded && (
+            <div className="archived-list">
+              {archivedHabits.map((habit) => (
+                <button 
+                  key={habit.id} 
+                  className="archived-habit-row"
+                  onClick={() => onHabitClick(habit.id)}
+                  title={`View ${habit.name}`}
+                >
+                  <span className="archived-habit-icon">{habit.icon}</span>
+                  <span className="archived-habit-name">{habit.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
