@@ -6,7 +6,7 @@
 
 /* Header */
 .header {
-  padding: 12px 16px; /* From 20px to 12px 16px */
+  padding: 12px 16px;
   border-bottom: 1px solid #E5E5E5;
   display: flex;
   justify-content: space-between;
@@ -16,17 +16,17 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 6px; /* From 8px to 6px */
-  font-size: 16px; /* From 24px to 16px */
+  gap: 6px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .btn-add {
-  padding: 8px 12px; /* From 10px 16px to 8px 12px */
+  padding: 8px 12px;
   background: black;
   color: white;
   border-radius: 4px;
-  font-size: 13px; /* From 14px to 13px */
+  font-size: 13px;
   font-weight: 500;
   transition: opacity 0.2s;
 }
@@ -37,7 +37,7 @@
 
 /* Main Content */
 .main {
-  padding: 8px 16px; 
+  padding: 12px 16px;
   max-height: 480px;
   overflow-y: auto;
 }
@@ -63,7 +63,7 @@
 /* Empty State */
 .empty-state {
   text-align: center;
-  padding: 48px 24px;
+  padding: 40px 20px;
   color: #666666;
 }
 
@@ -79,15 +79,15 @@
 }
 
 .empty-state h2 {
-  font-size: 20px;
-  margin-bottom: 32px;
+  font-size: 18px;
+  margin-bottom: 24px;
   color: black;
   font-weight: 600;
 }
 
 /* Examples Section */
 .empty-state-examples {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .example-label {
@@ -127,8 +127,28 @@
   font-weight: 500;
 }
 
-.empty-state-examples {
-  margin-bottom: 24px; /* Adjusted from 32px */
+/* Add First Habit Button */
+.btn-add-first {
+  padding: 12px 24px;
+  background: black;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 20px;
+  border: none;
+}
+
+.btn-add-first:hover {
+  background: #333333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-add-first:active {
+  transform: translateY(0);
 }
 
 /* Tip */

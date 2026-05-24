@@ -86,11 +86,11 @@ function App() {
   };
 
   const handleNavigatePrevious = () => {
-    setDateOffset(prev => prev - 10); 
+    setDateOffset(prev => prev - 10);
   };
 
   const handleNavigateNext = () => {
-    setDateOffset(prev => Math.min(prev + 10, 0)); 
+    setDateOffset(prev => Math.min(prev + 10, 0));
   };
 
   const handleBackToMain = () => {
@@ -149,6 +149,10 @@ function App() {
                   </div>
                 </div>
               </div>
+
+              <button className="btn-add-first" onClick={handleAddHabit}>
+                + Add Your First Habit
+              </button>
 
               <div className="empty-state-tip">
                 💡 Start with 2-3 habits

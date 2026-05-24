@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'streak_seeker_data';
+import { v4 as uuidv4 } from 'uuid';
 
 // Get all data
 export const getData = () => {
@@ -26,7 +27,7 @@ export const getHabits = () => {
 export const addHabit = (habitData) => {
   const data = getData();
   const newHabit = {
-    id: generateId(),
+    id: uuidv4(),
     name: habitData.name,
     icon: habitData.icon,
     color: habitData.color || '#000000',
