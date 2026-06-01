@@ -1,8 +1,8 @@
 /* Grid layout for perfect alignment */
 .habit-grid-header {
   display: grid;
-  grid-template-columns: 100px repeat(10, 30px); 
-  column-gap: 5px;
+  grid-template-columns: 14px 14px 72px repeat(10, 28px);
+  column-gap: 4px;
   row-gap: 0px;
   padding: 4px;
   margin-bottom: 4px;
@@ -12,8 +12,8 @@
 
 .habit-grid-row {
   display: grid;
-  grid-template-columns: 16px 58px 16px repeat(10, 30px);
-  column-gap: 5px;
+  grid-template-columns: 14px 14px 72px repeat(10, 28px);
+  column-gap: 4px;
   row-gap: 0px;
   align-items: center;
   padding: 4px;
@@ -24,13 +24,14 @@
   background: white;
 }
 
-/* Nav Section */
+/* Nav Section - spans the 3 left columns to align with row */
 .nav-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
   padding: 0;
+  grid-column: span 3;
 }
 
 .date-range {
@@ -65,7 +66,7 @@
   color: black;
 }
 
-/* Actions column LEFT - drag handle */
+/* Drag handle column */
 .habit-actions-col-left {
   display: flex;
   align-items: center;
@@ -73,23 +74,46 @@
 }
 
 .drag-handle {
-  font-size: 12px;
+  font-size: 14px;
   padding: 0px;
   color: #666666;
   cursor: grab;
   touch-action: none;
+  background: none;
+  border: none;
 }
 
 .drag-handle:active {
   cursor: grabbing;
 }
 
-/* Info column - icon spans 2 cols */
+/* Menu button column */
+.habit-menu-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.menu-btn {
+  font-size: 14px;
+  padding: 0px;
+  color: #666666;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: color 0.2s;
+}
+
+.menu-btn:hover {
+  color: black;
+}
+
+/* Info column - icon */
 .habit-info-col {
   display: flex;
   align-items: center;
   justify-content: center;
-  grid-column: span 2;
   padding-right: 10px;
 }
 
@@ -116,7 +140,7 @@
   border-radius: 4px;
   border: 2px solid transparent;
   transition: border-color 0.2s;
-  width: 30px;
+  width: 28px;
   box-sizing: border-box;
 }
 
@@ -144,7 +168,7 @@
   width: 100%;
 }
 
-/* Day columns (checkboxes) */
+/* Day columns */
 .day-col {
   display: flex;
   justify-content: center;
@@ -153,8 +177,8 @@
   border-radius: 4px;
   border: 2px solid transparent;
   transition: border-color 0.2s;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   box-sizing: border-box;
 }
 
@@ -164,15 +188,15 @@
 }
 
 .checkbox {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border: 1.5px solid black;
   border-radius: 2px;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.15s;
   flex-shrink: 0;
 }

@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getDayOfWeek, calculateCurrentStreak } from '../utils/dateHelpers';
 import { getHabitLogs } from '../utils/storage';
+import ActionMenu from './ActionMenu';
 import './HabitRow.css';
 
-function HabitRow({ habit, dates, today, onToggle, onHabitClick }) {
+function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchive, onUnarchive, onDelete }) {
+  if (!habit || !habit.id) return null;
+  
+  const [menuOpen, setMenuOpen] = useState(false);
   const logs = getHabitLogs(habit.id);
   const currentStreak = calculateCurrentStreak(logs);
 
@@ -23,7 +28,6 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick }) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  // Check if a date is part of the current streak
   const isPartOfStreak = (dateStr) => {
     if (currentStreak === 0) return false;
     
@@ -34,13 +38,19 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick }) {
     return logs[dateStr] && daysDiff < currentStreak;
   };
 
+  const handleDelete = () => {
+    if (window.confirm(`Delete "${habit.name}"? This will permanently delete the habit and all its history. This cannot be undone.`)) {
+      onDelete(habit.id);
+    }
+  };
+
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
       className="habit-grid-row"
     >
-      {/* Left column - Drag handle */}
+      {/* Drag handle - leftmost */}
       <div className="habit-actions-col-left">
         <button 
           className="drag-handle" 
@@ -52,7 +62,30 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick }) {
         </button>
       </div>
 
-      {/* Info column - Icon only */}
+      {/* Menu button */}
+      <div className="habit-menu-col">
+        <button 
+          className="menu-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen(!menuOpen);
+          }}
+          title="Actions"
+        >
+          ≡
+        </button>
+        <ActionMenu
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          onEdit={() => onEdit(habit)}
+          onArchive={() => onArchive(habit.id)}
+          onUnarchive={() => onUnarchive(habit.id)}
+          onDelete={handleDelete}
+          isArchived={habit.archived}
+        />
+      </div>
+
+      {/* Icon */}
       <div className="habit-info-col">
         <button 
           className="habit-icon-btn"
@@ -63,7 +96,7 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick }) {
         </button>
       </div>
 
-      {/* Day columns - Checkboxes with fire emoji for streaks */}
+      {/* Day columns */}
       {dates.map((date) => {
         const isCompleted = logs[date] || false;
         const isStreak = isPartOfStreak(date);

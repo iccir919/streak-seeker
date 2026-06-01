@@ -164,6 +164,9 @@ function App() {
               onToggle={handleToggle}
               onHabitClick={handleHabitClick}
               onEdit={handleEditHabit}
+              onArchive={handleArchiveHabit}
+              onUnarchive={handleUnarchiveHabit}
+              onDelete={handleDeleteHabit}
               dateOffset={dateOffset}
               onNavigatePrevious={handleNavigatePrevious}
               onNavigateNext={handleNavigateNext}

@@ -3,10 +3,12 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { getDayOfWeek, getToday } from '../utils/dateHelpers';
 import HabitRow from './HabitRow';
+import ActionMenu from './ActionMenu';
 import './HabitList.css';
 
-function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavigatePrevious, onNavigateNext, onReorder }) {
+function HabitList({ habits, onToggle, onHabitClick, onEdit, onArchive, onUnarchive, onDelete, dateOffset, onNavigatePrevious, onNavigateNext, onReorder }) {
   const [archivedExpanded, setArchivedExpanded] = useState(false);
+  const [archivedMenuOpen, setArchivedMenuOpen] = useState(null); // stores habit id
 
   const activeHabits = habits.filter(h => !h.archived);
   const archivedHabits = habits
@@ -19,7 +21,7 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
 
   const getDatesWithOffset = (offset) => {
     const dates = [];
-    for (let i = 9; i >= 0; i--) { 
+    for (let i = 9; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() + offset - i);
       const year = date.getFullYear();
@@ -68,9 +70,14 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
     }
   };
 
+  const handleArchivedDelete = (habit) => {
+    if (window.confirm(`Delete "${habit.name}"? This will permanently delete the habit and all its history. This cannot be undone.`)) {
+      onDelete(habit.id);
+    }
+  };
+
   return (
     <div className="habit-list">
-      {/* Header Row - only show if there are active habits */}
       {activeHabits.length > 0 && (
         <div className="habit-grid-header">
           <div className="nav-section">
@@ -103,7 +110,6 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
         </div>
       )}
 
-      {/* Active Habits */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -121,12 +127,15 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
               today={today}
               onToggle={onToggle}
               onHabitClick={onHabitClick}
+              onEdit={onEdit}
+              onArchive={onArchive}
+              onUnarchive={onUnarchive}
+              onDelete={onDelete}
             />
           ))}
         </SortableContext>
       </DndContext>
 
-      {/* Archived Section */}
       {archivedHabits.length > 0 && (
         <div className="archived-section">
           <button 
@@ -140,15 +149,37 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, dateOffset, onNavig
           {archivedExpanded && (
             <div className="archived-list">
               {archivedHabits.map((habit) => (
-                <button 
-                  key={habit.id} 
-                  className="archived-habit-row"
-                  onClick={() => onHabitClick(habit.id)}
-                  title={`View ${habit.name}`}
-                >
-                  <span className="archived-habit-icon">{habit.icon}</span>
-                  <span className="archived-habit-name">{habit.name}</span>
-                </button>
+                <div key={habit.id} className="archived-habit-row">
+                  <div className="archived-menu-wrapper">
+                    <button 
+                      className="menu-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setArchivedMenuOpen(archivedMenuOpen === habit.id ? null : habit.id);
+                      }}
+                      title="Actions"
+                    >
+                      ⋮
+                    </button>
+                    <ActionMenu
+                      isOpen={archivedMenuOpen === habit.id}
+                      onClose={() => setArchivedMenuOpen(null)}
+                      onEdit={() => onEdit(habit)}
+                      onArchive={() => onArchive(habit.id)}
+                      onUnarchive={() => onUnarchive(habit.id)}
+                      onDelete={() => handleArchivedDelete(habit)}
+                      isArchived={true}
+                    />
+                  </div>
+                  <button 
+                    className="archived-habit-content"
+                    onClick={() => onHabitClick(habit.id)}
+                    title={`View ${habit.name}`}
+                  >
+                    <span className="archived-habit-icon">{habit.icon}</span>
+                    <span className="archived-habit-name">{habit.name}</span>
+                  </button>
+                </div>
               ))}
             </div>
           )}
