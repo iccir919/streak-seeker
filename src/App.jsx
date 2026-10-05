@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import HabitList from './components/HabitList';
+import ArchivedHabitList from './components/ArchivedHabitList';
 import HabitModal from './components/HabitModal';
 import HabitDetailView from './components/HabitDetailView';
 import OverallView from './components/OverallView';
 import { 
   getHabits, 
+  getHabitLogs,
   toggleCompletion, 
   addHabit, 
   updateHabit, 
@@ -13,6 +15,7 @@ import {
   archiveHabit,
   unarchiveHabit
 } from './utils/storage';
+import { formatDate } from './utils/dateHelpers';
 import './App.css';
 
 function App() {
@@ -109,8 +112,30 @@ function App() {
     reorderHabits(habitIds);
   };
 
+  // Calculate today's progress
+  const getTodayProgress = () => {
+    const todayStr = formatDate(new Date());
+    const activeHabits = habits.filter(h => !h.archived);
+    
+    let completed = 0;
+    activeHabits.forEach(habit => {
+      const logs = getHabitLogs(habit.id);
+      if (logs[todayStr]) completed++;
+    });
+
+    return {
+      completed,
+      total: activeHabits.length,
+      percentage: activeHabits.length > 0 
+        ? Math.round((completed / activeHabits.length) * 100) 
+        : 0
+    };
+  };
+
   const selectedHabit = habits.find(h => h.id === selectedHabitId);
   const activeHabits = habits.filter(h => !h.archived);
+  const archivedHabits = habits.filter(h => h.archived);
+  const todayProgress = getTodayProgress();
 
   // Main view
   if (view === 'main') {
@@ -127,7 +152,7 @@ function App() {
         </div>
 
         <div className="main">
-          {activeHabits.length === 0 && habits.filter(h => h.archived).length === 0 ? (
+          {activeHabits.length === 0 && archivedHabits.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">🔥</div>
               <h2>Ready to build a streak?</h2>
@@ -159,32 +184,54 @@ function App() {
               </div>
             </div>
           ) : (
-            <HabitList
-              habits={habits}
-              onToggle={handleToggle}
-              onHabitClick={handleHabitClick}
-              onEdit={handleEditHabit}
-              onArchive={handleArchiveHabit}
-              onUnarchive={handleUnarchiveHabit}
-              onDelete={handleDeleteHabit}
-              dateOffset={dateOffset}
-              onNavigatePrevious={handleNavigatePrevious}
-              onNavigateNext={handleNavigateNext}
-              onReorder={handleReorder}
-            />
+            <>
+              <HabitList
+                habits={habits}
+                onToggle={handleToggle}
+                onHabitClick={handleHabitClick}
+                onEdit={handleEditHabit}
+                onArchive={handleArchiveHabit}
+                onDelete={handleDeleteHabit}
+                dateOffset={dateOffset}
+                onNavigatePrevious={handleNavigatePrevious}
+                onNavigateNext={handleNavigateNext}
+                onReorder={handleReorder}
+              />
+
+              {activeHabits.length > 0 && (
+                <div className="today-progress">
+                  <div className="today-progress-text">
+                    <span>Today: {todayProgress.completed}/{todayProgress.total} complete</span>
+                    <span className="today-progress-percentage">{todayProgress.percentage}%</span>
+                  </div>
+                  <div className="today-progress-bar">
+                    <div 
+                      className="today-progress-fill"
+                      style={{ width: `${todayProgress.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeHabits.length > 0 && (
+                <button 
+                  className="btn-overall-stats"
+                  onClick={() => setView('overall')}
+                >
+                  📊 Overall Stats
+                </button>
+              )}
+
+              <ArchivedHabitList
+                habits={habits}
+                onHabitClick={handleHabitClick}
+                onEdit={handleEditHabit}
+                onUnarchive={handleUnarchiveHabit}
+                onDelete={handleDeleteHabit}
+              />
+            </>
           )}
         </div>
-
-        {activeHabits.length > 0 && (
-          <div className="footer">
-            <button 
-              className="btn-heatmap"
-              onClick={() => setView('overall')}
-            >
-              📊 Overall Stats
-            </button>
-          </div>
-        )}
 
         <HabitModal
           isOpen={showModal}

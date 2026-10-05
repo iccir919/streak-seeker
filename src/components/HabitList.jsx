@@ -1,21 +1,24 @@
-import { useState } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { getDayOfWeek, getToday } from '../utils/dateHelpers';
 import HabitRow from './HabitRow';
-import ActionMenu from './ActionMenu';
 import './HabitList.css';
 
-function HabitList({ habits, onToggle, onHabitClick, onEdit, onArchive, onUnarchive, onDelete, dateOffset, onNavigatePrevious, onNavigateNext, onReorder }) {
-  const [archivedExpanded, setArchivedExpanded] = useState(false);
-  const [archivedMenuOpen, setArchivedMenuOpen] = useState(null); // stores habit id
-
+function HabitList({ 
+  habits, 
+  onToggle, 
+  onHabitClick, 
+  onEdit, 
+  onArchive, 
+  onDelete, 
+  dateOffset, 
+  onNavigatePrevious, 
+  onNavigateNext, 
+  onReorder
+}) {
   const activeHabits = habits.filter(h => !h.archived);
-  const archivedHabits = habits
-    .filter(h => h.archived)
-    .sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt));
 
-  if (activeHabits.length === 0 && archivedHabits.length === 0) {
+  if (activeHabits.length === 0) {
     return null;
   }
 
@@ -70,45 +73,37 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, onArchive, onUnarch
     }
   };
 
-  const handleArchivedDelete = (habit) => {
-    if (window.confirm(`Delete "${habit.name}"? This will permanently delete the habit and all its history. This cannot be undone.`)) {
-      onDelete(habit.id);
-    }
-  };
-
   return (
     <div className="habit-list">
-      {activeHabits.length > 0 && (
-        <div className="habit-grid-header">
-          <div className="nav-section">
-            <div className="date-range">{getDateRange()}</div>
-            <div className="nav-buttons">
-              <button className="nav-btn" onClick={onNavigatePrevious} title="Previous period">
-                ←
-              </button>
-              <button 
-                className="nav-btn" 
-                onClick={onNavigateNext} 
-                title="Next period"
-                disabled={isToday}
-                style={{ opacity: isToday ? 0.3 : 1, cursor: isToday ? 'not-allowed' : 'pointer' }}
-              >
-                →
-              </button>
-            </div>
+      <div className="habit-grid-header">
+        <div className="nav-section">
+          <div className="date-range">{getDateRange()}</div>
+          <div className="nav-buttons">
+            <button className="nav-btn" onClick={onNavigatePrevious} title="Previous period">
+              ←
+            </button>
+            <button 
+              className="nav-btn" 
+              onClick={onNavigateNext} 
+              title="Next period"
+              disabled={isToday}
+              style={{ opacity: isToday ? 0.3 : 1, cursor: isToday ? 'not-allowed' : 'pointer' }}
+            >
+              →
+            </button>
           </div>
-
-          {dates.map((date) => {
-            const isTodayDate = date === today;
-            return (
-              <div key={date} className={`day-header-cell ${isTodayDate ? 'today' : ''}`}>
-                <div className="day-header-label">{getDayOfWeek(date)}</div>
-                <div className="day-header-date">{getDayOfMonth(date)}</div>
-              </div>
-            );
-          })}
         </div>
-      )}
+
+        {dates.map((date) => {
+          const isTodayDate = date === today;
+          return (
+            <div key={date} className={`day-header-cell ${isTodayDate ? 'today' : ''}`}>
+              <div className="day-header-label">{getDayOfWeek(date)}</div>
+              <div className="day-header-date">{getDayOfMonth(date)}</div>
+            </div>
+          );
+        })}
+      </div>
 
       <DndContext
         sensors={sensors}
@@ -129,62 +124,11 @@ function HabitList({ habits, onToggle, onHabitClick, onEdit, onArchive, onUnarch
               onHabitClick={onHabitClick}
               onEdit={onEdit}
               onArchive={onArchive}
-              onUnarchive={onUnarchive}
               onDelete={onDelete}
             />
           ))}
         </SortableContext>
       </DndContext>
-
-      {archivedHabits.length > 0 && (
-        <div className="archived-section">
-          <button 
-            className="archived-toggle"
-            onClick={() => setArchivedExpanded(!archivedExpanded)}
-          >
-            <span className="archived-arrow">{archivedExpanded ? '▼' : '▶'}</span>
-            <span>Archived ({archivedHabits.length})</span>
-          </button>
-
-          {archivedExpanded && (
-            <div className="archived-list">
-              {archivedHabits.map((habit) => (
-                <div key={habit.id} className="archived-habit-row">
-                  <div className="archived-menu-wrapper">
-                    <button 
-                      className="menu-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setArchivedMenuOpen(archivedMenuOpen === habit.id ? null : habit.id);
-                      }}
-                      title="Actions"
-                    >
-                      ⋮
-                    </button>
-                    <ActionMenu
-                      isOpen={archivedMenuOpen === habit.id}
-                      onClose={() => setArchivedMenuOpen(null)}
-                      onEdit={() => onEdit(habit)}
-                      onArchive={() => onArchive(habit.id)}
-                      onUnarchive={() => onUnarchive(habit.id)}
-                      onDelete={() => handleArchivedDelete(habit)}
-                      isArchived={true}
-                    />
-                  </div>
-                  <button 
-                    className="archived-habit-content"
-                    onClick={() => onHabitClick(habit.id)}
-                    title={`View ${habit.name}`}
-                  >
-                    <span className="archived-habit-icon">{habit.icon}</span>
-                    <span className="archived-habit-name">{habit.name}</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

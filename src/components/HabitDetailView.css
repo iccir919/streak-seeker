@@ -64,12 +64,12 @@
   overflow-y: auto;
 }
 
-/* Stats Grid - 4 cards */
+/* Stats Grid - 3 cards */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
@@ -97,16 +97,72 @@
   font-weight: 500;
 }
 
-/* Period Selector */
-.period-selector {
+/* Date range + presets, mirrors Overall view */
+.controls-stack {
   display: flex;
-  gap: 6px;
-  margin-bottom: 20px;
-  justify-content: center;
+  flex-direction: column;
 }
 
-.period-btn {
-  padding: 6px 12px;
+.controls-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.date-input {
+  padding: 6px 10px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  color: #333333;
+  transition: border-color 0.2s;
+}
+
+.date-input:hover {
+  border-color: #666666;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: black;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+.date-separator {
+  font-size: 13px;
+  color: #666666;
+  font-weight: 500;
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.preset-btn {
+  padding: 5px 10px;
   background: white;
   color: #666666;
   border: 1px solid #E5E5E5;
@@ -117,63 +173,16 @@
   transition: all 0.2s;
 }
 
-.period-btn:hover {
+.preset-btn:hover {
   background: #F5F5F5;
   border-color: #666666;
+  color: black;
 }
 
-.period-btn.active {
+.preset-btn.active {
   background: black;
   color: white;
   border-color: black;
-}
-
-/* Date Picker */
-.date-picker-container {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-bottom: 20px;
-  padding: 12px;
-  background: #F9F9F9;
-  border-radius: 8px;
-}
-
-.date-picker-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.date-picker-wrapper label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #666666;
-}
-
-.date-picker-input {
-  padding: 6px 10px;
-  border: 1px solid #E5E5E5;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.2s;
-  min-width: 130px;
-  font-family: inherit;
-}
-
-.date-picker-input:hover {
-  border-color: #666666;
-}
-
-.date-picker-input:focus {
-  outline: none;
-  border-color: black;
-}
-
-.date-picker-input::-webkit-calendar-picker-indicator {
-  cursor: pointer;
 }
 
 /* Sections */
@@ -187,93 +196,302 @@
   margin-bottom: 12px;
 }
 
-/* Stat Rows (Progress Bars) */
-.stat-row {
-  margin-bottom: 12px;
+/* Line chart */
+.line-chart-wrapper {
+  margin-bottom: 16px;
 }
 
-.stat-row-label {
+.line-chart-plot-area {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-  font-size: 13px;
-}
-
-.stat-row-label span:first-child {
-  font-weight: 500;
-}
-
-.stat-row-count {
-  font-size: 11px;
-  color: #666666;
-}
-
-/* Progress Bar */
-.progress-bar-container {
-  width: 100%;
-  height: 20px;
-  background: #F5F5F5;
-  border-radius: 4px;
-  overflow: hidden;
+  gap: 6px;
   position: relative;
 }
 
-.progress-bar-fill {
-  height: 100%;
-  background: black;
+.line-chart-y-axis {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: width 0.3s ease;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 28px;
+  flex-shrink: 0;
+  height: 110px;
+  padding: 2px 0;
 }
 
-.progress-bar-text {
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
+.line-chart-y-label {
+  font-size: 9px;
+  font-weight: 500;
+  color: #999999;
+  text-align: right;
 }
 
-.progress-bar-text-zero {
-  color: #666666;
-  font-size: 10px;
-  font-weight: 600;
+.line-chart-svg {
+  flex: 1;
+  min-width: 0;
+  height: 110px;
+  display: block;
+  overflow: visible;
+}
+
+.line-chart-tooltip {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -130%);
+  background: black;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
 }
 
-/* Heatmap */
-.heatmap {
-  display: grid;
-  gap: 3px;
+.line-chart-tooltip-date {
+  font-weight: 600;
+  margin-bottom: 2px;
 }
 
-.heatmap-cell {
-  aspect-ratio: 1;
-  border-radius: 2px;
+.line-chart-tooltip-value {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.line-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  margin-left: 34px;
+}
+
+.line-chart-label {
+  font-size: 8px;
+  font-weight: 500;
+  color: #999999;
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+}
+
+/* View toggle (Chart / Heatmap) */
+.view-toggle {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.view-toggle-btn {
+  padding: 5px 14px;
+  background: white;
+  color: #666666;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.heatmap-cell.empty {
+.view-toggle-btn:hover {
+  background: #F5F5F5;
+  border-color: #666666;
+}
+
+.view-toggle-btn.active {
+  background: black;
+  color: white;
+  border-color: black;
+}
+
+/* Calendar-style heatmap (≤30 days): days as columns, weeks as rows */
+.hm-cal-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.hm-cal-day-header {
+  display: flex;
+  gap: 6px;
+}
+
+.hm-cal-month-spacer {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.hm-cal-day-label {
+  width: var(--hm-cell-size);
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  text-align: center;
+}
+
+.hm-cal-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hm-cal-week-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hm-cal-month-label {
+  width: 32px;
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+}
+
+/* GitHub-style heatmap (>30 days). Day labels stay fixed on the
+   left; grid + month labels are stacked together inside ONE scrolling
+   element so they always move in lockstep. */
+.hm-container {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  width: 100%;
+  position: relative;
+}
+
+.hm-day-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 28px;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+
+.hm-day-label {
+  height: var(--hm-cell-size);
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  display: flex;
+  align-items: center;
+}
+
+.hm-scroll-region {
+  flex: 1;
+  overflow-x: auto;
+  padding-top: 3px;
+  padding-right: 4px;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+
+.hm-scroll-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+}
+
+.hm-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.hm-week-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.hm-month-labels {
+  display: flex;
+  gap: 6px;
+}
+
+.hm-month-label-cell {
+  width: var(--hm-cell-size);
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  text-align: left;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* Shared cell styling - binary (completed / empty) */
+.hm-cell {
+  width: var(--hm-cell-size);
+  height: var(--hm-cell-size);
+  border-radius: 3px;
+  transition: transform 0.1s;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.hm-cell:hover {
+  transform: scale(1.15);
+}
+
+.hm-cell-padding {
+  background: #FAFAFA;
+  border: 1px solid #F0F0F0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.hm-cell-padding:hover {
+  transform: none;
+}
+
+.hm-cell-empty {
   background: #F5F5F5;
   border: 1px solid #E5E5E5;
 }
 
-.heatmap-cell.completed {
+.hm-cell-completed {
   background: black;
   border: 1px solid black;
 }
 
-.heatmap-cell:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  z-index: 10;
+.hm-cell-today {
+  box-shadow: 0 0 0 2px #4A90D9;
 }
 
-/* Info Section */
+/* Comparison boxes - equal weight */
+.comparison-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.comparison-card {
+  border: 1px solid #E5E5E5;
+  border-radius: 8px;
+  padding: 16px 12px;
+  text-align: center;
+  background: white;
+}
+
+.comparison-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: black;
+  margin-bottom: 4px;
+}
+
+.comparison-label {
+  font-size: 11px;
+  color: #666666;
+  font-weight: 500;
+}
+
+/* Footer info */
 .info-section {
   border-top: 1px solid #E5E5E5;
   padding-top: 12px;

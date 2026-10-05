@@ -1,0 +1,222 @@
+.gh-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+/* Month labels row */
+.gh-month-labels {
+  display: flex;
+}
+
+.gh-day-label-spacer {
+  width: 22px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.gh-month-labels-row {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.gh-month-label-cell {
+  width: var(--cell-size);
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  text-align: left;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* Body */
+.gh-heatmap-body {
+  display: flex;
+  gap: 4px;
+}
+
+.gh-day-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.gh-day-label {
+  height: var(--cell-size);
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  display: flex;
+  align-items: center;
+}
+
+.gh-weeks {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.gh-week-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gh-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: 2px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.gh-cell:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+/* Padding cells */
+.cell-padding {
+  background: #FAFAFA;
+  border: 1px solid #F0F0F0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.cell-padding:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Binary mode */
+.cell-empty {
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
+}
+
+.cell-completed {
+  background: black;
+  border: 1px solid black;
+}
+
+/* Multi-level mode */
+.cell-level-0 {
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
+}
+
+.cell-level-1 {
+  background: #D0D0D0;
+  border: 1px solid #C0C0C0;
+}
+
+.cell-level-2 {
+  background: #A0A0A0;
+  border: 1px solid #909090;
+}
+
+.cell-level-3 {
+  background: #707070;
+  border: 1px solid #606060;
+}
+
+.cell-level-4 {
+  background: #404040;
+  border: 1px solid #303030;
+}
+
+.cell-level-5 {
+  background: #000000;
+  border: 1px solid #000000;
+}
+
+/* 7-day horizontal view */
+.gh-seven-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.gh-seven-day-labels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.gh-seven-day-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #333333;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.gh-seven-day-cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.gh-seven-day-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  transition: all 0.15s;
+  cursor: pointer;
+  min-height: 40px;
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
+}
+
+.gh-seven-day-cell:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+/* 7-day cell color states - apply on top of base */
+.gh-seven-day-cell.cell-completed {
+  background: black !important;
+  border-color: black !important;
+}
+
+.gh-seven-day-cell.cell-empty {
+  background: #F5F5F5 !important;
+  border-color: #E5E5E5 !important;
+}
+
+.gh-seven-day-cell.cell-level-0 {
+  background: #F5F5F5 !important;
+  border-color: #E5E5E5 !important;
+}
+
+.gh-seven-day-cell.cell-level-1 {
+  background: #D0D0D0 !important;
+  border-color: #C0C0C0 !important;
+}
+
+.gh-seven-day-cell.cell-level-2 {
+  background: #A0A0A0 !important;
+  border-color: #909090 !important;
+}
+
+.gh-seven-day-cell.cell-level-3 {
+  background: #707070 !important;
+  border-color: #606060 !important;
+}
+
+.gh-seven-day-cell.cell-level-4 {
+  background: #404040 !important;
+  border-color: #303030 !important;
+}
+
+.gh-seven-day-cell.cell-level-5 {
+  background: #000000 !important;
+  border-color: #000000 !important;
+}

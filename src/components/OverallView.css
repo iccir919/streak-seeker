@@ -38,68 +38,96 @@
   overflow-y: auto;
 }
 
-/* Period Selector */
-.period-selector {
+/* Explicit column stack for Range row + Presets row, so they can
+   never end up sharing a line regardless of any other layout
+   context that might otherwise affect them. */
+.controls-stack {
   display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  justify-content: center;
+  flex-direction: column;
 }
 
-.period-btn {
-  padding: 8px 16px;
+/* Row 1: Range, centered */
+.controls-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.date-input {
+  padding: 6px 10px;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  color: #333333;
+  transition: border-color 0.2s;
+}
+
+.date-input:hover {
+  border-color: #666666;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: black;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+.date-separator {
+  font-size: 13px;
+  color: #666666;
+  font-weight: 500;
+}
+
+/* Row 2: Presets, centered below */
+.preset-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.preset-btn {
+  padding: 5px 10px;
   background: white;
   color: #666666;
   border: 1px solid #E5E5E5;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.period-btn:hover {
+.preset-btn:hover {
   background: #F5F5F5;
   border-color: #666666;
+  color: black;
 }
 
-.period-btn.active {
+.preset-btn.active {
   background: black;
   color: white;
   border-color: black;
-}
-
-/* Stats Overview */
-.stats-overview {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.stat-card-small {
-  border: 1px solid #E5E5E5;
-  border-radius: 6px;
-  padding: 12px;
-  text-align: center;
-  background: white;
-}
-
-.stat-icon-small {
-  font-size: 24px;
-  margin-bottom: 6px;
-}
-
-.stat-value-small {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-
-.stat-label-small {
-  font-size: 10px;
-  color: #666666;
-  font-weight: 500;
 }
 
 /* Sections */
@@ -113,97 +141,327 @@
   margin-bottom: 16px;
 }
 
-/* Heatmap */
-.heatmap-large {
-  display: grid;
-  gap: 3px;
-  margin-bottom: 12px;
+/* Line chart */
+.line-chart-wrapper {
+  margin-bottom: 16px;
 }
 
-.heatmap-cell-large {
-  aspect-ratio: 1;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid #E5E5E5;
+.line-chart-plot-area {
+  display: flex;
+  gap: 6px;
+  position: relative;
 }
 
-.heatmap-cell-large:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+.line-chart-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 28px;
+  flex-shrink: 0;
+  height: 132px;
+  padding: 2px 0;
+}
+
+.line-chart-y-label {
+  font-size: 9px;
+  font-weight: 500;
+  color: #999999;
+  text-align: right;
+}
+
+.line-chart-svg {
+  flex: 1;
+  min-width: 0;
+  height: 132px;
+  display: block;
+  overflow: visible;
+}
+
+.line-chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  background: black;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
   z-index: 10;
 }
 
-/* Heatmap color levels */
-.heatmap-cell-large.level-0 {
+.line-chart-tooltip-date {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.line-chart-tooltip-value {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.line-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  margin-left: 34px;
+}
+
+.line-chart-label {
+  font-size: 8px;
+  font-weight: 500;
+  color: #999999;
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+}
+
+/* View toggle (Chart / Heatmap) */
+.view-toggle {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.view-toggle-btn {
+  padding: 5px 14px;
+  background: white;
+  color: #666666;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-toggle-btn:hover {
   background: #F5F5F5;
+  border-color: #666666;
 }
 
-.heatmap-cell-large.level-1 {
-  background: #D0D0D0;
+.view-toggle-btn.active {
+  background: black;
+  color: white;
+  border-color: black;
 }
 
-.heatmap-cell-large.level-2 {
-  background: #A0A0A0;
+/* Calendar-style heatmap (≤30 days) */
+.ov-hm-cal-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  width: 100%;
 }
 
-.heatmap-cell-large.level-3 {
-  background: #707070;
+.ov-hm-cal-day-header {
+  display: flex;
+  gap: 6px;
 }
 
-.heatmap-cell-large.level-4 {
-  background: #404040;
+.ov-hm-cal-month-spacer {
+  width: 32px;
+  flex-shrink: 0;
 }
 
-.heatmap-cell-large.level-5 {
-  background: #000000;
+.ov-hm-cal-day-label {
+  width: var(--hm-cell-size);
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  text-align: center;
 }
 
-/* Heatmap Legend */
-.heatmap-legend {
+.ov-hm-cal-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ov-hm-cal-week-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 6px;
+}
+
+.ov-hm-cal-month-label {
+  width: 32px;
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
   color: #666666;
 }
 
-.legend-boxes {
+/* GitHub-style heatmap (>30 days) */
+.ov-hm-container {
   display: flex;
-  gap: 3px;
+  gap: 6px;
+  margin-bottom: 16px;
+  width: 100%;
+  position: relative;
 }
 
-.legend-box {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+.ov-hm-day-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 28px;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+
+.ov-hm-day-label {
+  height: var(--hm-cell-size);
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  display: flex;
+  align-items: center;
+}
+
+.ov-hm-scroll-region {
+  flex: 1;
+  overflow-x: auto;
+  padding-top: 3px;
+  padding-right: 4px;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+
+.ov-hm-scroll-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+}
+
+.ov-hm-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.ov-hm-week-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ov-hm-month-labels {
+  display: flex;
+  gap: 6px;
+}
+
+.ov-hm-month-label-cell {
+  width: var(--hm-cell-size);
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  text-align: left;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.ov-hm-container.is-scrollable::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 100%;
+  background: linear-gradient(to right, rgba(255,255,255,0), white);
+  pointer-events: none;
+}
+
+/* Shared cell styling */
+.ov-hm-cell {
+  width: var(--hm-cell-size);
+  height: var(--hm-cell-size);
+  border-radius: 3px;
+  transition: transform 0.1s;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ov-hm-cell:hover {
+  transform: scale(1.15);
+}
+
+.ov-hm-cell-padding {
+  background: #FAFAFA;
+  border: 1px solid #F0F0F0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.ov-hm-cell-padding:hover {
+  transform: none;
+}
+
+.ov-hm-cell-level-0 {
+  background: #F5F5F5;
   border: 1px solid #E5E5E5;
 }
 
-/* Apply same colors as heatmap cells */
-.legend-box.level-0 {
-  background: #F5F5F5;
-}
-
-.legend-box.level-1 {
+.ov-hm-cell-level-1 {
   background: #D0D0D0;
+  border: 1px solid #C0C0C0;
 }
 
-.legend-box.level-2 {
+.ov-hm-cell-level-2 {
   background: #A0A0A0;
+  border: 1px solid #909090;
 }
 
-.legend-box.level-3 {
+.ov-hm-cell-level-3 {
   background: #707070;
+  border: 1px solid #606060;
 }
 
-.legend-box.level-4 {
+.ov-hm-cell-level-4 {
   background: #404040;
+  border: 1px solid #303030;
 }
 
-.legend-box.level-5 {
+.ov-hm-cell-level-5 {
   background: #000000;
+  border: 1px solid #000000;
+}
+
+.ov-hm-cell-today {
+  box-shadow: 0 0 0 2px #4A90D9;
+}
+
+/* Stats Overview - 3 cards, no icons */
+.stats-overview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat-card-small {
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  background: white;
+}
+
+.stat-value-small {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.stat-label-small {
+  font-size: 9px;
+  color: #666666;
+  font-weight: 500;
 }
 
 /* Habit Rankings */
@@ -284,30 +542,50 @@
   text-align: right;
 }
 
-/* Insights */
-.insights {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.insight-card {
-  border: 1px solid #E5E5E5;
-  border-radius: 6px;
-  padding: 16px;
+.no-data-message {
   text-align: center;
+  color: #999999;
+  font-size: 13px;
+  padding: 20px;
 }
 
-.insight-label {
-  font-size: 12px;
+/* Empty state in Overall view */
+.empty-state-overall {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-state-overall .empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state-overall h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.empty-state-overall p {
+  font-size: 14px;
   color: #666666;
-  font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 24px;
 }
 
-.insight-value {
-  font-size: 20px;
-  font-weight: 700;
+.btn-back-to-main {
+  padding: 10px 20px;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-back-to-main:hover {
+  opacity: 0.8;
 }
 
 /* Scrollbar */
@@ -327,52 +605,3 @@
 .overall-content::-webkit-scrollbar-thumb:hover {
   background: #D0D0D0;
 }
-
-/* Date Picker */
-.date-picker-container {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #F9F9F9;
-  border-radius: 8px;
-}
-
-.date-picker-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.date-picker-wrapper label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #666666;
-}
-
-.date-picker-input {
-  padding: 8px 12px;
-  border: 1px solid #E5E5E5;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.2s;
-  min-width: 140px;
-  font-family: inherit;
-}
-
-.date-picker-input:hover {
-  border-color: #666666;
-}
-
-.date-picker-input:focus {
-  outline: none;
-  border-color: black;
-}
-
-.date-picker-input::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-}
-

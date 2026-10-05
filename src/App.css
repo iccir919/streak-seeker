@@ -60,6 +60,66 @@
   background: #D0D0D0;
 }
 
+/* Today's Progress - sits below active habits, inside .main */
+.today-progress {
+  padding: 10px 4px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  border-top: 1px solid #E5E5E5;
+}
+
+.today-progress-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #333333;
+}
+
+.today-progress-percentage {
+  font-weight: 700;
+  color: black;
+}
+
+.today-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #F5F5F5;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.today-progress-fill {
+  height: 100%;
+  background: black;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Overall Stats Button */
+.btn-overall-stats {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: white;
+  color: black;
+  border: 1px solid black;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.btn-overall-stats:hover {
+  background: black;
+  color: white;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;
@@ -156,30 +216,6 @@
   font-size: 12px;
   color: #999999;
   font-style: italic;
-}
-
-/* Footer */
-.footer {
-  padding: 16px 20px;
-  border-top: 1px solid #E5E5E5;
-  background: white;
-}
-
-.btn-heatmap {
-  width: 100%;
-  padding: 12px;
-  background: white;
-  color: black;
-  border: 1px solid black;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-heatmap:hover {
-  background: black;
-  color: white;
 }
 
 /* Views */

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { getHabitLogs } from '../utils/storage';
 import { calculateCurrentStreak, calculateLongestStreak, formatDate } from '../utils/dateHelpers';
 import './HabitDetailView.css';
@@ -6,25 +6,31 @@ import './HabitDetailView.css';
 function HabitDetailView({ habit, onBack, onEdit }) {
   if (!habit) return null;
 
-  const [heatmapPeriod, setHeatmapPeriod] = useState(30);
-  const [customRange, setCustomRange] = useState(false);
-  const [startDate, setStartDate] = useState(() => {
+  const getDefaultStartDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+    date.setDate(date.getDate() - 29);
+    return formatDate(date);
+  };
+
+  const getDefaultEndDate = () => {
+    return formatDate(new Date());
+  };
+
+  const [startDate, setStartDate] = useState(getDefaultStartDate());
+  const [endDate, setEndDate] = useState(getDefaultEndDate());
+  const [activePreset, setActivePreset] = useState(30);
+  const [trendView, setTrendView] = useState('chart'); // 'chart' | 'heatmap'
+  const [cellSize, setCellSize] = useState(20);
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const hmContainerRef = useRef(null);
+  const chartWrapperRef = useRef(null);
+  const plotAreaRef = useRef(null);
+  const tooltipRef = useRef(null);
 
   const logs = getHabitLogs(habit.id);
   const currentStreak = calculateCurrentStreak(logs);
   const longestStreak = calculateLongestStreak(logs);
 
-  // Calculate total completions
-  const totalCompletions = Object.values(logs).filter(completed => completed).length;
-
-  // Get the earliest date this habit was active (createdAt or earliest log)
   const getHabitStartDate = () => {
     const logDates = Object.keys(logs).filter(d => logs[d]).sort();
     
@@ -34,7 +40,6 @@ function HabitDetailView({ habit, onBack, onEdit }) {
       earliestDate = new Date(habit.createdAt);
     }
     
-    // If there's a log earlier than createdAt, use that instead
     if (logDates.length > 0) {
       const earliestLog = new Date(logDates[0] + 'T00:00:00');
       if (!earliestDate || earliestLog < earliestDate) {
@@ -45,33 +50,40 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     return earliestDate;
   };
 
-  // Calculate completion stats for last N days
-  const getLastNDaysStats = (days) => {
-    let completed = 0;
-    for (let i = 0; i < days; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = formatDate(date);
-      if (logs[dateStr]) completed++;
+  const getDaysSinceLastCompleted = () => {
+    const completedDates = Object.keys(logs).filter(d => logs[d]).sort();
+    
+    if (completedDates.length === 0) {
+      return null;
     }
-    return { 
-      completed, 
-      total: days, 
-      rate: Math.round((completed / days) * 100) 
-    };
+
+    const lastDateStr = completedDates[completedDates.length - 1];
+    const lastDate = new Date(lastDateStr + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
   };
 
-  // Calculate rate since habit started (using earliest log or createdAt)
+  // Rate for the currently selected custom range (replaces the old
+  // "last N days from today" logic - now walks the actual start/end
+  // date span, same as Overall's getDaysInRange).
+  const getRateForRange = (rangeDays) => {
+    if (rangeDays.length === 0) return 0;
+    const completed = rangeDays.filter(d => d.completed).length;
+    return Math.round((completed / rangeDays.length) * 100);
+  };
+
   const getSinceCreatedRate = () => {
-    const startDate = getHabitStartDate();
-    if (!startDate) return 0;
+    const habitStartDate = getHabitStartDate();
+    if (!habitStartDate) return 0;
     
     const today = new Date();
-    const daysSince = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const daysSince = Math.floor((today - habitStartDate) / (1000 * 60 * 60 * 24)) + 1;
     
     let completed = 0;
     for (let i = 0; i < daysSince; i++) {
-      const date = new Date(startDate);
+      const date = new Date(habitStartDate);
       date.setDate(date.getDate() + i);
       const dateStr = formatDate(date);
       if (logs[dateStr]) completed++;
@@ -80,32 +92,17 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     return daysSince > 0 ? Math.round((completed / daysSince) * 100) : 0;
   };
 
-  const stats = {
-    last7: getLastNDaysStats(7),
-    last30: getLastNDaysStats(30),
-    last60: getLastNDaysStats(60),
-    last90: getLastNDaysStats(90),
-    sinceCreatedRate: getSinceCreatedRate()
-  };
+  const sinceCreatedRate = getSinceCreatedRate();
+  const daysSinceLastCompleted = getDaysSinceLastCompleted();
 
-  // Get total days in heatmap period
-  const getHeatmapTotalDays = () => {
-    if (customRange) {
-      return Math.floor((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
-    }
-    return heatmapPeriod;
-  };
-
-  // Format start date (using earliest known date)
   const formatStartDate = () => {
-    const startDate = getHabitStartDate();
-    if (!startDate) return 'Unknown';
+    const habitStartDate = getHabitStartDate();
+    if (!habitStartDate) return 'Unknown';
     
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return startDate.toLocaleDateString('en-US', options);
+    return habitStartDate.toLocaleDateString('en-US', options);
   };
 
-  // Format archive date
   const formatArchiveDate = () => {
     if (!habit.archivedAt) return null;
     const date = new Date(habit.archivedAt);
@@ -113,76 +110,315 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     return date.toLocaleDateString('en-US', options);
   };
 
-  // Format date for tooltip (e.g., "April 22, 2026")
+  const getDayOfWeek = (dateStr) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  };
+
   const formatDateForTooltip = (dateStr) => {
     const date = new Date(dateStr + 'T00:00:00');
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
   };
 
-  // Render progress bar
-  const ProgressBar = ({ rate }) => (
-    <div className="progress-bar-container">
-      <div 
-        className="progress-bar-fill" 
-        style={{ width: `${rate}%`, minWidth: rate > 0 ? '40px' : '0px' }}
-      >
-        {rate > 0 && <span className="progress-bar-text">{rate}%</span>}
-      </div>
-      {rate === 0 && (
-        <span className="progress-bar-text-zero">0%</span>
-      )}
-    </div>
-  );
+  const formatDateShort = (dateStr) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
-  // Generate heatmap based on selected period
-  const generateHeatmap = () => {
+  // Walks the actual start/end date span (calendar-safe, same
+  // approach as Overall's getDaysInRange - avoids the DST off-by-one
+  // that raw millisecond division could introduce).
+  const generateDays = () => {
     const result = [];
-    const totalDays = getHeatmapTotalDays();
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
 
-    if (customRange) {
-      const start = new Date(startDate + 'T00:00:00');
-      for (let i = 0; i < totalDays; i++) {
-        const date = new Date(start);
-        date.setDate(date.getDate() + i);
-        const dateStr = formatDate(date);
-        const isCompleted = logs[dateStr] || false;
-        result.push({ date: dateStr, completed: isCompleted });
-      }
-    } else {
-      for (let i = heatmapPeriod - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = formatDate(date);
-        const isCompleted = logs[dateStr] || false;
-        result.push({ date: dateStr, completed: isCompleted });
-      }
+    let cursor = new Date(start);
+    while (cursor <= end) {
+      const dateStr = formatDate(cursor);
+      const isCompleted = logs[dateStr] || false;
+      result.push({ date: dateStr, completed: isCompleted });
+      cursor.setDate(cursor.getDate() + 1);
     }
     return result;
   };
 
-  const heatmapDays = generateHeatmap();
+  const getWeeklyTrend = (days) => {
+    const weekGroups = [];
+    let currentWeek = [];
 
-  // Calculate grid columns based on period
-  const getHeatmapColumns = () => {
-    const totalDays = getHeatmapTotalDays();
-    if (totalDays <= 7) return 7;
-    if (totalDays <= 30) return 10;
-    if (totalDays <= 60) return 15;
-    if (totalDays <= 90) return 18;
-    return 20;
+    days.forEach((day, index) => {
+      const dayOfWeek = new Date(day.date + 'T00:00:00').getDay();
+      currentWeek.push(day);
+      if (dayOfWeek === 6 || index === days.length - 1) {
+        weekGroups.push(currentWeek);
+        currentWeek = [];
+      }
+    });
+
+    return weekGroups.map(week => {
+      const completedCount = week.filter(d => d.completed).length;
+      const percentage = Math.round((completedCount / week.length) * 100);
+      const firstDate = new Date(week[0].date + 'T00:00:00');
+      const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
+      return {
+        label: firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        fullLabel: `${firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        percentage
+      };
+    });
   };
 
-  // Handle period selection
-  const handlePeriodSelect = (period) => {
-    setHeatmapPeriod(period);
-    setCustomRange(false);
+  // Adaptive granularity, same thresholds as Overall's getTrendData.
+  const getTrendData = (rangeDays) => {
+    const totalDays = rangeDays.length;
+
+    if (totalDays <= 14) {
+      return rangeDays.map(day => {
+        const date = new Date(day.date + 'T00:00:00');
+        return {
+          label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          percentage: day.completed ? 100 : 0
+        };
+      });
+    } else if (totalDays < 180) {
+      return getWeeklyTrend(rangeDays);
+    } else {
+      const monthGroups = {};
+      rangeDays.forEach(day => {
+        const date = new Date(day.date + 'T00:00:00');
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+        if (!monthGroups[key]) {
+          monthGroups[key] = {
+            label: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+            completed: 0,
+            total: 0
+          };
+        }
+        monthGroups[key].total += 1;
+        if (day.completed) monthGroups[key].completed += 1;
+      });
+      return Object.values(monthGroups).map(group => ({
+        label: group.label,
+        fullLabel: group.label,
+        percentage: group.total > 0 ? Math.round((group.completed / group.total) * 100) : 0
+      }));
+    }
   };
 
-  // Display text for the heatmap period
-  const heatmapPeriodText = customRange 
-    ? `${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-    : `Last ${heatmapPeriod} Days`;
+  const getHeatmapGrid = (days) => {
+    if (days.length === 0) return [];
+
+    const firstDate = new Date(days[0].date + 'T00:00:00');
+    const firstDayOfWeek = firstDate.getDay();
+
+    const paddedDays = [];
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+      const padDate = new Date(firstDate);
+      padDate.setDate(padDate.getDate() - (i + 1));
+      paddedDays.push({ date: null, isPadding: true });
+    }
+
+    const allCells = [...paddedDays, ...days];
+
+    const remainder = allCells.length % 7;
+    if (remainder !== 0) {
+      const padCount = 7 - remainder;
+      for (let i = 0; i < padCount; i++) {
+        allCells.push({ date: null, isPadding: true });
+      }
+    }
+
+    const weeks = [];
+    for (let i = 0; i < allCells.length; i += 7) {
+      weeks.push(allCells.slice(i, i + 7));
+    }
+
+    return weeks;
+  };
+
+  const getHeatmapCellClass = (day) => {
+    if (day.isPadding) return 'hm-cell-padding';
+    return day.completed ? 'hm-cell-completed' : 'hm-cell-empty';
+  };
+
+  const getHeatmapTooltip = (day) => {
+    if (day.isPadding) return '';
+    return `${formatDateForTooltip(day.date)}${day.completed ? ' ✓' : ''}`;
+  };
+
+  const getMonthLabelCandidates = (weeks) => {
+    const labels = [];
+    let lastMonth = -1;
+
+    weeks.forEach((week) => {
+      const firstRealDay = week.find(d => !d.isPadding);
+      if (!firstRealDay) {
+        labels.push(null);
+        return;
+      }
+
+      const date = new Date(firstRealDay.date + 'T00:00:00');
+      const month = date.getMonth();
+
+      if (month !== lastMonth) {
+        labels.push(date.toLocaleDateString('en-US', { month: 'short' }));
+        lastMonth = month;
+      } else {
+        labels.push(null);
+      }
+    });
+
+    return labels;
+  };
+
+  const getVisibleMonthLabels = (candidates, cellSizePx) => {
+    const minColumnsBetweenLabels = cellSizePx < 22 ? Math.ceil(22 / cellSizePx) : 1;
+
+    const visible = new Array(candidates.length).fill(null);
+    let lastShownIndex = -Infinity;
+
+    candidates.forEach((label, idx) => {
+      if (label === null) return;
+      if (idx - lastShownIndex >= minColumnsBetweenLabels) {
+        visible[idx] = label;
+        lastShownIndex = idx;
+      }
+    });
+
+    return visible;
+  };
+
+  const handlePresetClick = (days) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - (days - 1));
+
+    setStartDate(formatDate(start));
+    setEndDate(formatDate(end));
+    setActivePreset(days);
+  };
+
+  const handleStartDateChange = (e) => {
+    setStartDate(e.target.value);
+    setActivePreset(null);
+  };
+
+  const handleEndDateChange = (e) => {
+    setEndDate(e.target.value);
+    setActivePreset(null);
+  };
+
+  const rangeDays = generateDays();
+  const trendData = getTrendData(rangeDays);
+  const heatmapWeeks = trendView === 'heatmap' ? getHeatmapGrid(rangeDays) : [];
+  const monthLabelCandidates = trendView === 'heatmap' ? getMonthLabelCandidates(heatmapWeeks) : [];
+  const layoutMode = rangeDays.length <= 30 ? 'calendar' : 'github';
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayStr = formatDate(new Date());
+
+  const monthLabels = trendView === 'heatmap'
+    ? getVisibleMonthLabels(monthLabelCandidates, cellSize)
+    : [];
+
+  const thisRangeRate = getRateForRange(rangeDays);
+  const rangeLabel = startDate === endDate
+    ? formatDateShort(startDate)
+    : `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`;
+
+  useLayoutEffect(() => {
+    if (trendView !== 'heatmap' || !hmContainerRef.current) return;
+
+    const calculate = () => {
+      const containerWidth = hmContainerRef.current.offsetWidth;
+      const gap = 6;
+
+      if (layoutMode === 'calendar') {
+        const monthLabelWidth = 32;
+        const available = containerWidth - monthLabelWidth - 6;
+        const totalGaps = (7 - 1) * gap;
+        const size = (available - totalGaps) / 7;
+        setCellSize(Math.round(Math.max(18, Math.min(46, size))));
+      } else {
+        const dayLabelWidth = 28;
+        const numWeeks = heatmapWeeks.length || 1;
+        const available = containerWidth - dayLabelWidth - 6;
+        const totalGaps = (numWeeks - 1) * gap;
+        const rawSize = (available - totalGaps) / numWeeks;
+        setCellSize(Math.floor(Math.max(10, Math.min(36, rawSize))));
+      }
+    };
+
+    calculate();
+    window.addEventListener('resize', calculate);
+    return () => window.removeEventListener('resize', calculate);
+  }, [trendView, layoutMode, heatmapWeeks.length]);
+
+  const chartWidth = 400;
+  const chartHeight = 100;
+  const chartPadding = 4;
+  const points = trendData.map((item, index) => {
+    const x = trendData.length > 1
+      ? chartPadding + (index / (trendData.length - 1)) * (chartWidth - chartPadding * 2)
+      : chartWidth / 2;
+    const y = chartPadding + (1 - item.percentage / 100) * (chartHeight - chartPadding * 2);
+    return { x, y, ...item };
+  });
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = points.length > 0
+    ? `${linePath} L ${points[points.length - 1].x} ${chartHeight} L ${points[0].x} ${chartHeight} Z`
+    : '';
+
+  const yAxisTicks = [
+    { value: 100, y: chartPadding },
+    { value: 50, y: chartPadding + 0.5 * (chartHeight - chartPadding * 2) },
+    { value: 0, y: chartHeight - chartPadding }
+  ];
+
+  const handlePointHover = (e, point) => {
+    const svgEl = e.currentTarget.ownerSVGElement;
+    const svgRect = svgEl.getBoundingClientRect();
+    const scaleX = svgRect.width / chartWidth;
+    const scaleY = svgRect.height / chartHeight;
+
+    const rawX = point.x * scaleX;
+    const screenY = point.y * scaleY;
+
+    const plotRect = plotAreaRef.current ? plotAreaRef.current.getBoundingClientRect() : null;
+    const svgOffsetX = plotRect ? svgRect.left - plotRect.left : 0;
+    const absoluteX = svgOffsetX + rawX;
+
+    setHoveredPoint({
+      screenX: absoluteX,
+      screenY,
+      label: point.fullLabel || point.label,
+      percentage: point.percentage
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!hoveredPoint || !tooltipRef.current || !plotAreaRef.current) return;
+
+    const tooltipEl = tooltipRef.current;
+    const plotRect = plotAreaRef.current.getBoundingClientRect();
+    const popupEl = plotAreaRef.current.closest('.detail-content') || plotAreaRef.current.closest('.habit-detail');
+    const popupRect = popupEl ? popupEl.getBoundingClientRect() : plotRect;
+
+    const tooltipWidth = tooltipEl.offsetWidth;
+    const halfWidth = tooltipWidth / 2;
+
+    const minX = (popupRect.left - plotRect.left) + halfWidth + 4;
+    const maxX = (popupRect.right - plotRect.left) - halfWidth - 4;
+
+    setHoveredPoint(prev => {
+      if (!prev) return prev;
+      const clamped = Math.max(minX, Math.min(maxX, prev.screenX));
+      if (clamped === prev.screenX) return prev;
+      return { ...prev, screenX: clamped };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoveredPoint && hoveredPoint.label, hoveredPoint && hoveredPoint.percentage]);
 
   return (
     <div className="habit-detail">
@@ -201,7 +437,6 @@ function HabitDetailView({ habit, onBack, onEdit }) {
       </div>
 
       <div className="detail-content">
-        {/* Stats Grid - 4 cards */}
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-icon">🔥</div>
@@ -214,133 +449,219 @@ function HabitDetailView({ habit, onBack, onEdit }) {
             <div className="stat-label">Longest</div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">✓</div>
-            <div className="stat-value">{totalCompletions}</div>
-            <div className="stat-label">Total</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">📈</div>
-            <div className="stat-value">{stats.sinceCreatedRate}%</div>
-            <div className="stat-label">Since Created</div>
+            <div className="stat-icon">⏱️</div>
+            <div className="stat-value">
+              {daysSinceLastCompleted === null ? 'Never' : daysSinceLastCompleted}
+            </div>
+            <div className="stat-label">Days Since</div>
           </div>
         </div>
 
-        {/* Completion Rates - All 4 periods */}
-        <div className="section">
-          <h2>📈 Completion Rate</h2>
-          
-          <div className="stat-row">
-            <div className="stat-row-label">
-              <span>Last 7 days</span>
-              <span className="stat-row-count">{stats.last7.completed}/{stats.last7.total}</span>
+        {/* Date range + presets, mirroring Overall view */}
+        <div className="controls-stack">
+          <div className="controls-row-top">
+            <div className="date-inputs">
+              <span className="date-label">Range:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={handleStartDateChange}
+                max={endDate}
+                className="date-input"
+              />
+              <span className="date-separator">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={handleEndDateChange}
+                min={startDate}
+                max={formatDate(new Date())}
+                className="date-input"
+              />
             </div>
-            <ProgressBar rate={stats.last7.rate} />
           </div>
 
-          <div className="stat-row">
-            <div className="stat-row-label">
-              <span>Last 30 days</span>
-              <span className="stat-row-count">{stats.last30.completed}/{stats.last30.total}</span>
-            </div>
-            <ProgressBar rate={stats.last30.rate} />
-          </div>
-
-          <div className="stat-row">
-            <div className="stat-row-label">
-              <span>Last 60 days</span>
-              <span className="stat-row-count">{stats.last60.completed}/{stats.last60.total}</span>
-            </div>
-            <ProgressBar rate={stats.last60.rate} />
-          </div>
-
-          <div className="stat-row">
-            <div className="stat-row-label">
-              <span>Last 90 days</span>
-              <span className="stat-row-count">{stats.last90.completed}/{stats.last90.total}</span>
-            </div>
-            <ProgressBar rate={stats.last90.rate} />
-          </div>
-        </div>
-
-        {/* Heatmap with Period Selector */}
-        <div className="section">
-          <h2>🗓️ {heatmapPeriodText}</h2>
-          
-          <div className="period-selector">
+          <div className="preset-buttons">
             <button
-              className={`period-btn ${heatmapPeriod === 7 && !customRange ? 'active' : ''}`}
-              onClick={() => handlePeriodSelect(7)}
+              className={`preset-btn ${activePreset === 7 ? 'active' : ''}`}
+              onClick={() => handlePresetClick(7)}
             >
               7 Days
             </button>
             <button
-              className={`period-btn ${heatmapPeriod === 30 && !customRange ? 'active' : ''}`}
-              onClick={() => handlePeriodSelect(30)}
+              className={`preset-btn ${activePreset === 30 ? 'active' : ''}`}
+              onClick={() => handlePresetClick(30)}
             >
               30 Days
             </button>
             <button
-              className={`period-btn ${heatmapPeriod === 60 && !customRange ? 'active' : ''}`}
-              onClick={() => handlePeriodSelect(60)}
+              className={`preset-btn ${activePreset === 60 ? 'active' : ''}`}
+              onClick={() => handlePresetClick(60)}
             >
               60 Days
             </button>
             <button
-              className={`period-btn ${heatmapPeriod === 90 && !customRange ? 'active' : ''}`}
-              onClick={() => handlePeriodSelect(90)}
+              className={`preset-btn ${activePreset === 90 ? 'active' : ''}`}
+              onClick={() => handlePresetClick(90)}
             >
               90 Days
             </button>
-            <button
-              className={`period-btn ${customRange ? 'active' : ''}`}
-              onClick={() => setCustomRange(true)}
-            >
-              Custom
-            </button>
           </div>
+        </div>
 
-          {/* Custom Date Range Picker */}
-          {customRange && (
-            <div className="date-picker-container">
-              <div className="date-picker-wrapper">
-                <label>Start Date:</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  max={endDate}
-                  className="date-picker-input"
-                />
+        <div className="section">
+          {trendView === 'chart' ? (
+            <div className="line-chart-wrapper" ref={chartWrapperRef}>
+              <div className="line-chart-plot-area" ref={plotAreaRef}>
+                <div className="line-chart-y-axis">
+                  {yAxisTicks.map((tick) => (
+                    <span key={tick.value} className="line-chart-y-label">{tick.value}%</span>
+                  ))}
+                </div>
+                <svg
+                  className="line-chart-svg"
+                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                  preserveAspectRatio="none"
+                  onMouseLeave={() => setHoveredPoint(null)}
+                >
+                  {yAxisTicks.map((tick) => (
+                    <line
+                      key={tick.value}
+                      x1={0}
+                      y1={tick.y}
+                      x2={chartWidth}
+                      y2={tick.y}
+                      stroke="#EEEEEE"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                  {areaPath && (
+                    <path d={areaPath} fill="url(#lineFadeDetail)" stroke="none" />
+                  )}
+                  <defs>
+                    <linearGradient id="lineFadeDetail" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="black" stopOpacity="0.12" />
+                      <stop offset="100%" stopColor="black" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {linePath && (
+                    <path d={linePath} fill="none" stroke="black" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                  )}
+                  {points.map((p, i) => (
+                    <circle
+                      key={i}
+                      cx={p.x}
+                      cy={p.y}
+                      r="2.5"
+                      fill="black"
+                      onMouseEnter={(e) => handlePointHover(e, p)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  ))}
+                </svg>
+                {hoveredPoint && (
+                  <div
+                    ref={tooltipRef}
+                    className="line-chart-tooltip"
+                    style={{
+                      left: `${hoveredPoint.screenX}px`,
+                      top: `${hoveredPoint.screenY}px`
+                    }}
+                  >
+                    <div className="line-chart-tooltip-date">{hoveredPoint.label}</div>
+                    <div className="line-chart-tooltip-value">{hoveredPoint.percentage}%</div>
+                  </div>
+                )}
               </div>
-              <div className="date-picker-wrapper">
-                <label>End Date:</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate}
-                  max={new Date().toISOString().split('T')[0]}
-                  className="date-picker-input"
-                />
+              <div className="line-chart-labels">
+                {trendData.map((item, index) => (
+                  <span key={index} className="line-chart-label">{item.label}</span>
+                ))}
+              </div>
+            </div>
+          ) : layoutMode === 'calendar' ? (
+            <div className="hm-cal-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
+              <div className="hm-cal-day-header">
+                <div className="hm-cal-month-spacer" />
+                {dayLabels.map((label) => (
+                  <div key={label} className="hm-cal-day-label">{label}</div>
+                ))}
+              </div>
+              <div className="hm-cal-grid">
+                {heatmapWeeks.map((week, weekIdx) => (
+                  <div key={weekIdx} className="hm-cal-week-row">
+                    <div className="hm-cal-month-label">{monthLabels[weekIdx] || ''}</div>
+                    {week.map((day, dayIdx) => (
+                      <div
+                        key={`${weekIdx}-${dayIdx}`}
+                        className={`hm-cell ${getHeatmapCellClass(day)} ${day.date === todayStr ? 'hm-cell-today' : ''}`}
+                        title={getHeatmapTooltip(day)}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="hm-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
+              <div className="hm-day-labels">
+                {dayLabels.map((label) => (
+                  <div key={label} className="hm-day-label">{label}</div>
+                ))}
+              </div>
+              <div className="hm-scroll-region">
+                <div className="hm-scroll-content">
+                  <div className="hm-grid">
+                    {heatmapWeeks.map((week, weekIdx) => (
+                      <div key={weekIdx} className="hm-week-column">
+                        {week.map((day, dayIdx) => (
+                          <div
+                            key={`${weekIdx}-${dayIdx}`}
+                            className={`hm-cell ${getHeatmapCellClass(day)} ${day.date === todayStr ? 'hm-cell-today' : ''}`}
+                            title={getHeatmapTooltip(day)}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hm-month-labels">
+                    {monthLabels.map((label, idx) => (
+                      <div key={idx} className="hm-month-label-cell">{label || ''}</div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          <div 
-            className="heatmap"
-            style={{ gridTemplateColumns: `repeat(${getHeatmapColumns()}, 1fr)` }}
-          >
-            {heatmapDays.map((day) => (
-              <div
-                key={day.date}
-                className={`heatmap-cell ${day.completed ? 'completed' : 'empty'}`}
-                title={`${formatDateForTooltip(day.date)}${day.completed ? ' ✓' : ''}`}
-              />
-            ))}
+          <div className="view-toggle">
+            <button
+              className={`view-toggle-btn ${trendView === 'chart' ? 'active' : ''}`}
+              onClick={() => setTrendView('chart')}
+            >
+              Chart
+            </button>
+            <button
+              className={`view-toggle-btn ${trendView === 'heatmap' ? 'active' : ''}`}
+              onClick={() => setTrendView('heatmap')}
+            >
+              Heatmap
+            </button>
+          </div>
+
+          <div className="comparison-row">
+            <div className="comparison-card">
+              <div className="comparison-value">{thisRangeRate}%</div>
+              <div className="comparison-label">{rangeLabel}</div>
+            </div>
+            <div className="comparison-card">
+              <div className="comparison-value">{sinceCreatedRate}%</div>
+              <div className="comparison-label">Since Created</div>
+            </div>
           </div>
         </div>
 
-        {/* Info */}
         <div className="section info-section">
           <div className="info-row">
             <span className="info-label">Tracking since</span>

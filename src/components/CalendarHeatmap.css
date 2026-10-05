@@ -1,0 +1,113 @@
+.cal-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.cal-day-header {
+  display: grid;
+  grid-template-columns: 40px repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.cal-month-spacer {
+  width: 40px;
+}
+
+.cal-day-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  text-align: center;
+}
+
+.cal-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cal-week-row {
+  display: grid;
+  grid-template-columns: 40px repeat(7, 1fr);
+  gap: 4px;
+  align-items: center;
+}
+
+.cal-month-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #333333;
+  text-align: left;
+  padding-left: 4px;
+}
+
+.cal-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.cal-cell:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+/* Padding cells */
+.cal-cell.cell-padding {
+  background: #FAFAFA;
+  border: 1px solid #F0F0F0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.cal-cell.cell-padding:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Binary mode */
+.cal-cell.cell-empty {
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
+}
+
+.cal-cell.cell-completed {
+  background: black;
+  border: 1px solid black;
+}
+
+/* Multi-level mode */
+.cal-cell.cell-level-0 {
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
+}
+
+.cal-cell.cell-level-1 {
+  background: #D0D0D0;
+  border: 1px solid #C0C0C0;
+}
+
+.cal-cell.cell-level-2 {
+  background: #A0A0A0;
+  border: 1px solid #909090;
+}
+
+.cal-cell.cell-level-3 {
+  background: #707070;
+  border: 1px solid #606060;
+}
+
+.cal-cell.cell-level-4 {
+  background: #404040;
+  border: 1px solid #303030;
+}
+
+.cal-cell.cell-level-5 {
+  background: #000000;
+  border: 1px solid #000000;
+}
