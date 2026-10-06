@@ -1,19 +1,7 @@
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { getHabitLogs } from '../utils/storage';
-import { calculateCurrentStreak, calculateLongestStreak, formatDate } from '../utils/dateHelpers';
+import { calculateCurrentStreak, calculateLongestStreak, formatDate, normalizeRange, toDateString, groupIntoWeeks } from '../utils/dateHelpers';
 import './HabitDetailView.css';
-
-// Turns a stored date value into a local 'YYYY-MM-DD' string.
-// Habits store createdAt/archivedAt as ISO timestamps, logs use plain
-// date strings, so everything is normalized to date strings before
-// comparing.
-const toDateString = (value) => {
-  if (!value) return null;
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const parsed = new Date(value);
-  if (isNaN(parsed.getTime())) return null;
-  return formatDate(parsed);
-};
 
 const formatRate = (rate) => (rate === null ? 'N/A' : `${rate}%`);
 
@@ -46,7 +34,8 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
   const plotAreaRef = useRef(null);
   const tooltipRef = useRef(null);
 
-  const logs = getHabitLogs(habit.id);
+  // Read from storage once per habit, not on every hover/re-render.
+  const logs = useMemo(() => getHabitLogs(habit.id), [habit.id]);
   const currentStreak = calculateCurrentStreak(logs);
   const longestStreak = calculateLongestStreak(logs);
 
@@ -161,30 +150,26 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
     return result;
   };
 
+  // 7-day points counted back from the end date, so the newest point is
+  // always a full week. Only active days count; a point with fewer than
+  // 7 active days says so in its tooltip.
   const getWeeklyTrend = (days) => {
-    const weekGroups = [];
-    let currentWeek = [];
-
-    days.forEach((day, index) => {
-      const dayOfWeek = new Date(day.date + 'T00:00:00').getDay();
-      currentWeek.push(day);
-      if (dayOfWeek === 6 || index === days.length - 1) {
-        weekGroups.push(currentWeek);
-        currentWeek = [];
-      }
-    });
-
-    return weekGroups.map(week => week.filter(d => d.active)).filter(week => week.length > 0).map(week => {
-      const completedCount = week.filter(d => d.completed).length;
-      const percentage = Math.round((completedCount / week.length) * 100);
-      const firstDate = new Date(week[0].date + 'T00:00:00');
-      const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
-      return {
-        label: firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        fullLabel: `${firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
-        percentage
-      };
-    });
+    return groupIntoWeeks(days)
+      .map(week => week.filter(d => d.active))
+      .filter(week => week.length > 0)
+      .map(week => {
+        const completedCount = week.filter(d => d.completed).length;
+        const percentage = Math.round((completedCount / week.length) * 100);
+        const firstDate = new Date(week[0].date + 'T00:00:00');
+        const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
+        const shortDate = { month: 'short', day: 'numeric' };
+        const dayNote = week.length < 7 ? ` (${week.length} day${week.length === 1 ? '' : 's'})` : '';
+        return {
+          label: firstDate.toLocaleDateString('en-US', shortDate),
+          fullLabel: `${firstDate.toLocaleDateString('en-US', shortDate)} - ${lastDate.toLocaleDateString('en-US', shortDate)}${dayNote}`,
+          percentage
+        };
+      });
   };
 
   // Adaptive granularity, same thresholds as Overall's getTrendData.
@@ -317,13 +302,21 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
     setActivePreset(days);
   };
 
+  // An empty value means the user cleared the field (or is mid-typing),
+  // so keep the last valid date instead of breaking the range.
   const handleStartDateChange = (e) => {
-    setStartDate(e.target.value);
+    if (!e.target.value) return;
+    const range = normalizeRange(e.target.value, endDate, 'start');
+    setStartDate(range.start);
+    setEndDate(range.end);
     setActivePreset(null);
   };
 
   const handleEndDateChange = (e) => {
-    setEndDate(e.target.value);
+    if (!e.target.value) return;
+    const range = normalizeRange(startDate, e.target.value, 'end');
+    setStartDate(range.start);
+    setEndDate(range.end);
     setActivePreset(null);
   };
 

@@ -1,7 +1,25 @@
-import { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
 import { getHabits, getHabitLogs } from '../utils/storage';
-import { formatDate } from '../utils/dateHelpers';
+import { formatDate, normalizeRange, toDateString, groupIntoWeeks } from '../utils/dateHelpers';
 import './OverallView.css';
+
+// Earlier of: the day the habit was created, or its first logged
+// completion. Returned as a 'YYYY-MM-DD' string so it compares cleanly
+// against calendar days (a habit created at 3pm counts for that whole day).
+const computeHabitStartStr = (habit, logs) => {
+  const createdStr = toDateString(habit.createdAt);
+  const firstLogStr = Object.keys(logs).filter(d => logs[d]).sort()[0] || null;
+  if (createdStr && firstLogStr) return createdStr < firstLogStr ? createdStr : firstLogStr;
+  return createdStr || firstLogStr;
+};
+
+// A habit counts on a day if it had started and was not yet archived.
+const isActiveOnDate = (info, dateStr) => {
+  if (!info.startStr) return false;
+  if (dateStr < info.startStr) return false;
+  if (info.archiveStr && dateStr > info.archiveStr) return false;
+  return true;
+};
 
 // Wrapper only decides between the empty state and the real view. All
 // hooks live in OverallContent so they always run in the same order.
@@ -59,38 +77,23 @@ function OverallContent({ habits, onBack }) {
   const plotAreaRef = useRef(null);
   const tooltipRef = useRef(null);
 
-  const getHabitStartDate = (habit) => {
-    const logs = getHabitLogs(habit.id);
-    const logDates = Object.keys(logs).filter(d => logs[d]).sort();
-    
-    let earliestDate = null;
-    
-    if (habit.createdAt) {
-      earliestDate = new Date(habit.createdAt);
-    }
-    
-    if (logDates.length > 0) {
-      const earliestLog = new Date(logDates[0] + 'T00:00:00');
-      if (!earliestDate || earliestLog < earliestDate) {
-        earliestDate = earliestLog;
-      }
-    }
-    
-    return earliestDate;
-  };
+  // Read storage ONCE per set of habits (not once per habit per day).
+  // Each entry holds that habit's logs plus its start and archive days.
+  const habitData = useMemo(() => {
+    const map = {};
+    habits.forEach(habit => {
+      const logs = getHabitLogs(habit.id);
+      map[habit.id] = {
+        logs,
+        startStr: computeHabitStartStr(habit, logs),
+        archiveStr: toDateString(habit.archivedAt)
+      };
+    });
+    return map;
+  }, [habits]);
 
   const getActiveHabitsOnDate = (dateStr) => {
-    const checkDate = new Date(dateStr + 'T00:00:00');
-    
-    return habits.filter(habit => {
-      const habitStartDate = getHabitStartDate(habit);
-      if (!habitStartDate) return false;
-      
-      const archivedDate = habit.archivedAt ? new Date(habit.archivedAt) : null;
-      
-      return habitStartDate <= checkDate && 
-             (!archivedDate || archivedDate >= checkDate);
-    });
+    return habits.filter(habit => isActiveOnDate(habitData[habit.id], dateStr));
   };
 
   const getDaysInRange = () => {
@@ -106,8 +109,7 @@ function OverallContent({ habits, onBack }) {
 
       let completedCount = 0;
       activeHabitsOnDate.forEach(habit => {
-        const logs = getHabitLogs(habit.id);
-        if (logs[dateStr]) completedCount++;
+        if (habitData[habit.id].logs[dateStr]) completedCount++;
       });
 
       days.push({
@@ -158,20 +160,14 @@ function OverallContent({ habits, onBack }) {
 
   const getHabitStats = (rangeData) => {
     return habits.map(habit => {
-      const logs = getHabitLogs(habit.id);
-      const habitStartDate = getHabitStartDate(habit);
-      const habitArchived = habit.archivedAt ? new Date(habit.archivedAt) : null;
+      const info = habitData[habit.id];
+      const logs = info.logs;
       
       let completions = 0;
       let activeDaysInPeriod = 0;
       
       rangeData.forEach(day => {
-        const dayDate = new Date(day.date + 'T00:00:00');
-        
-        const wasActive = habitStartDate && habitStartDate <= dayDate && 
-                         (!habitArchived || habitArchived >= dayDate);
-        
-        if (wasActive) {
+        if (isActiveOnDate(info, day.date)) {
           activeDaysInPeriod++;
           if (logs[day.date]) completions++;
         }
@@ -204,27 +200,20 @@ function OverallContent({ habits, onBack }) {
         };
       });
     } else if (totalDays < 180) {
-      const weekGroups = [];
-      let currentWeek = [];
-      
-      rangeData.forEach((day, index) => {
-        const dayOfWeek = new Date(day.date + 'T00:00:00').getDay();
-        currentWeek.push(day);
-        if (dayOfWeek === 6 || index === rangeData.length - 1) {
-          weekGroups.push(currentWeek);
-          currentWeek = [];
-        }
-      });
-
-      return weekGroups.map(week => {
+      // 7-day points counted back from the end date, so the newest point
+      // is always a full week. Only the oldest point can be shorter, and
+      // its tooltip says how many days it covers.
+      return groupIntoWeeks(rangeData).map(week => {
         const totalCompleted = week.reduce((sum, d) => sum + d.completedCount, 0);
         const totalPossible = week.reduce((sum, d) => sum + d.totalHabits, 0);
         const percentage = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
         const firstDate = new Date(week[0].date + 'T00:00:00');
         const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
+        const shortDate = { month: 'short', day: 'numeric' };
+        const dayNote = week.length < 7 ? ` (${week.length} day${week.length === 1 ? '' : 's'})` : '';
         return {
-          label: firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          fullLabel: `${firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+          label: firstDate.toLocaleDateString('en-US', shortDate),
+          fullLabel: `${firstDate.toLocaleDateString('en-US', shortDate)} - ${lastDate.toLocaleDateString('en-US', shortDate)}${dayNote}`,
           percentage
         };
       });
@@ -356,13 +345,21 @@ function OverallContent({ habits, onBack }) {
     setActivePreset(days);
   };
 
+  // An empty value means the user cleared the field (or is mid-typing),
+  // so keep the last valid date instead of breaking the range.
   const handleStartDateChange = (e) => {
-    setStartDate(e.target.value);
+    if (!e.target.value) return;
+    const range = normalizeRange(e.target.value, endDate, 'start');
+    setStartDate(range.start);
+    setEndDate(range.end);
     setActivePreset(null);
   };
 
   const handleEndDateChange = (e) => {
-    setEndDate(e.target.value);
+    if (!e.target.value) return;
+    const range = normalizeRange(startDate, e.target.value, 'end');
+    setStartDate(range.start);
+    setEndDate(range.end);
     setActivePreset(null);
   };
 
