@@ -26,7 +26,9 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
   const [startDate, setStartDate] = useState(getDefaultStartDate());
   const [endDate, setEndDate] = useState(getDefaultEndDate());
   const [activePreset, setActivePreset] = useState(30);
-  const [trendView, setTrendView] = useState('chart'); // 'chart' | 'heatmap'
+  // null = nothing picked yet, so short ranges default to the heatmap.
+  // Once the user clicks Chart or Heatmap, their choice sticks.
+  const [trendViewChoice, setTrendViewChoice] = useState(null); // null | 'chart' | 'heatmap'
   const [cellSize, setCellSize] = useState(20);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const hmContainerRef = useRef(null);
@@ -322,6 +324,10 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
 
   const rangeDays = generateDays();
   const trendData = getTrendData(rangeDays);
+  // Ranges of 14 days or fewer are plotted one day at a time, so every
+  // point is 0% or 100% and the line just zigzags. A strip of squares
+  // shows that much better, so it is the default there.
+  const trendView = trendViewChoice || (rangeDays.length <= 14 ? 'heatmap' : 'chart');
   const heatmapWeeks = trendView === 'heatmap' ? getHeatmapGrid(rangeDays) : [];
   const monthLabelCandidates = trendView === 'heatmap' ? getMonthLabelCandidates(heatmapWeeks) : [];
   const layoutMode = rangeDays.length <= 30 ? 'calendar' : 'github';
@@ -647,13 +653,13 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
           <div className="view-toggle">
             <button
               className={`view-toggle-btn ${trendView === 'chart' ? 'active' : ''}`}
-              onClick={() => setTrendView('chart')}
+              onClick={() => setTrendViewChoice('chart')}
             >
               Chart
             </button>
             <button
               className={`view-toggle-btn ${trendView === 'heatmap' ? 'active' : ''}`}
-              onClick={() => setTrendView('heatmap')}
+              onClick={() => setTrendViewChoice('heatmap')}
             >
               Heatmap
             </button>
