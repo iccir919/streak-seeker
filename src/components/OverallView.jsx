@@ -3,8 +3,38 @@ import { getHabits, getHabitLogs } from '../utils/storage';
 import { formatDate } from '../utils/dateHelpers';
 import './OverallView.css';
 
+// Wrapper only decides between the empty state and the real view. All
+// hooks live in OverallContent so they always run in the same order.
 function OverallView({ onBack }) {
   const habits = getHabits();
+
+  if (habits.length === 0) {
+    return (
+      <div className="overall-view">
+        <div className="overall-header">
+          <button className="btn-back" onClick={onBack}>
+            ←
+          </button>
+          <h1 className="overall-title">Overall Stats</h1>
+        </div>
+        <div className="overall-content">
+          <div className="empty-state-overall">
+            <div className="empty-state-icon">📊</div>
+            <h2>No Data Yet</h2>
+            <p>Add some habits and start tracking to see your stats here!</p>
+            <button className="btn-back-to-main" onClick={onBack}>
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <OverallContent habits={habits} onBack={onBack} />;
+}
+
+function OverallContent({ habits, onBack }) {
 
   const getDefaultStartDate = () => {
     const date = new Date();
@@ -336,7 +366,7 @@ function OverallView({ onBack }) {
     setActivePreset(null);
   };
 
-  const rangeData = habits.length > 0 ? getDaysInRange() : [];
+  const rangeData = getDaysInRange();
   const heatmapWeeks = trendView === 'heatmap' ? getHeatmapGrid(rangeData) : [];
   const monthLabelCandidates = trendView === 'heatmap' ? getMonthLabelCandidates(heatmapWeeks) : [];
   const layoutMode = rangeData.length <= 30 ? 'calendar' : 'github';
@@ -402,29 +432,6 @@ function OverallView({ onBack }) {
       window.removeEventListener('resize', updateFade);
     };
   }, [trendView, layoutMode, cellSize, heatmapWeeks.length]);
-
-  if (habits.length === 0) {
-    return (
-      <div className="overall-view">
-        <div className="overall-header">
-          <button className="btn-back" onClick={onBack}>
-            ←
-          </button>
-          <h1 className="overall-title">Overall Stats</h1>
-        </div>
-        <div className="overall-content">
-          <div className="empty-state-overall">
-            <div className="empty-state-icon">📊</div>
-            <h2>No Data Yet</h2>
-            <p>Add some habits and start tracking to see your stats here!</p>
-            <button className="btn-back-to-main" onClick={onBack}>
-              Go Back
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const stats = calculateStats(rangeData);
   const habitStats = getHabitStats(rangeData);

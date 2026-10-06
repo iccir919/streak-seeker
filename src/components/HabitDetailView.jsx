@@ -3,9 +3,28 @@ import { getHabitLogs } from '../utils/storage';
 import { calculateCurrentStreak, calculateLongestStreak, formatDate } from '../utils/dateHelpers';
 import './HabitDetailView.css';
 
+// Turns a stored date value into a local 'YYYY-MM-DD' string.
+// Habits store createdAt/archivedAt as ISO timestamps, logs use plain
+// date strings, so everything is normalized to date strings before
+// comparing.
+const toDateString = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return null;
+  return formatDate(parsed);
+};
+
+const formatRate = (rate) => (rate === null ? 'N/A' : `${rate}%`);
+
+// Wrapper only decides whether there is anything to show. All hooks
+// live in HabitDetailContent so they always run in the same order.
 function HabitDetailView({ habit, onBack, onEdit }) {
   if (!habit) return null;
+  return <HabitDetailContent habit={habit} onBack={onBack} onEdit={onEdit} />;
+}
 
+function HabitDetailContent({ habit, onBack, onEdit }) {
   const getDefaultStartDate = () => {
     const date = new Date();
     date.setDate(date.getDate() - 29);
@@ -31,23 +50,26 @@ function HabitDetailView({ habit, onBack, onEdit }) {
   const currentStreak = calculateCurrentStreak(logs);
   const longestStreak = calculateLongestStreak(logs);
 
-  const getHabitStartDate = () => {
-    const logDates = Object.keys(logs).filter(d => logs[d]).sort();
-    
-    let earliestDate = null;
-    
-    if (habit.createdAt) {
-      earliestDate = new Date(habit.createdAt);
-    }
-    
-    if (logDates.length > 0) {
-      const earliestLog = new Date(logDates[0] + 'T00:00:00');
-      if (!earliestDate || earliestLog < earliestDate) {
-        earliestDate = earliestLog;
-      }
-    }
-    
-    return earliestDate;
+  const todayStr = formatDate(new Date());
+
+  // Earlier of: the day the habit was created, or its first logged
+  // completion (covers habits that were back-filled).
+  const getHabitStartStr = () => {
+    const createdStr = toDateString(habit.createdAt);
+    const firstLogStr = Object.keys(logs).filter(d => logs[d]).sort()[0] || null;
+    if (createdStr && firstLogStr) return createdStr < firstLogStr ? createdStr : firstLogStr;
+    return createdStr || firstLogStr;
+  };
+
+  const habitStartStr = getHabitStartStr();
+  const archiveStr = toDateString(habit.archivedAt);
+
+  // A day counts only if the habit existed and was not yet archived.
+  const isActiveOn = (dateStr) => {
+    if (!habitStartStr) return false;
+    if (dateStr < habitStartStr) return false;
+    if (archiveStr && dateStr > archiveStr) return false;
+    return true;
   };
 
   const getDaysSinceLastCompleted = () => {
@@ -62,52 +84,48 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+    return Math.round((today - lastDate) / (1000 * 60 * 60 * 24));
   };
 
-  // Rate for the currently selected custom range (replaces the old
-  // "last N days from today" logic - now walks the actual start/end
-  // date span, same as Overall's getDaysInRange).
+  // Rate for a list of days, counting only days the habit was active.
+  // Returns null when no day in the list was active.
   const getRateForRange = (rangeDays) => {
-    if (rangeDays.length === 0) return 0;
-    const completed = rangeDays.filter(d => d.completed).length;
-    return Math.round((completed / rangeDays.length) * 100);
+    const activeDays = rangeDays.filter(d => d.active);
+    if (activeDays.length === 0) return null;
+    const completed = activeDays.filter(d => d.completed).length;
+    return Math.round((completed / activeDays.length) * 100);
   };
 
+  // From the habit's start to today (or to its archive date).
   const getSinceCreatedRate = () => {
-    const habitStartDate = getHabitStartDate();
-    if (!habitStartDate) return 0;
-    
-    const today = new Date();
-    const daysSince = Math.floor((today - habitStartDate) / (1000 * 60 * 60 * 24)) + 1;
-    
+    if (!habitStartStr) return null;
+    const endStr = archiveStr && archiveStr < todayStr ? archiveStr : todayStr;
+    if (endStr < habitStartStr) return null;
+
+    let total = 0;
     let completed = 0;
-    for (let i = 0; i < daysSince; i++) {
-      const date = new Date(habitStartDate);
-      date.setDate(date.getDate() + i);
-      const dateStr = formatDate(date);
-      if (logs[dateStr]) completed++;
+    const cursor = new Date(habitStartStr + 'T00:00:00');
+    while (formatDate(cursor) <= endStr) {
+      total++;
+      if (logs[formatDate(cursor)]) completed++;
+      cursor.setDate(cursor.getDate() + 1);
     }
-    
-    return daysSince > 0 ? Math.round((completed / daysSince) * 100) : 0;
+    return total > 0 ? Math.round((completed / total) * 100) : null;
   };
 
   const sinceCreatedRate = getSinceCreatedRate();
   const daysSinceLastCompleted = getDaysSinceLastCompleted();
 
   const formatStartDate = () => {
-    const habitStartDate = getHabitStartDate();
-    if (!habitStartDate) return 'Unknown';
-    
+    if (!habitStartStr) return 'Unknown';
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return habitStartDate.toLocaleDateString('en-US', options);
+    return new Date(habitStartStr + 'T00:00:00').toLocaleDateString('en-US', options);
   };
 
   const formatArchiveDate = () => {
-    if (!habit.archivedAt) return null;
-    const date = new Date(habit.archivedAt);
+    if (!archiveStr) return null;
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
+    return new Date(archiveStr + 'T00:00:00').toLocaleDateString('en-US', options);
   };
 
   const getDayOfWeek = (dateStr) => {
@@ -126,19 +144,18 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  // Walks the actual start/end date span (calendar-safe, same
-  // approach as Overall's getDaysInRange - avoids the DST off-by-one
-  // that raw millisecond division could introduce).
+  // Walks the start/end span one calendar day at a time (avoids the DST
+  // off-by-one that dividing milliseconds can cause). Each day records
+  // whether the habit was active, and whether it was completed.
   const generateDays = () => {
     const result = [];
-    const start = new Date(startDate + 'T00:00:00');
+    const cursor = new Date(startDate + 'T00:00:00');
     const end = new Date(endDate + 'T00:00:00');
 
-    let cursor = new Date(start);
     while (cursor <= end) {
       const dateStr = formatDate(cursor);
-      const isCompleted = logs[dateStr] || false;
-      result.push({ date: dateStr, completed: isCompleted });
+      const active = isActiveOn(dateStr);
+      result.push({ date: dateStr, active, completed: active && !!logs[dateStr] });
       cursor.setDate(cursor.getDate() + 1);
     }
     return result;
@@ -157,7 +174,7 @@ function HabitDetailView({ habit, onBack, onEdit }) {
       }
     });
 
-    return weekGroups.map(week => {
+    return weekGroups.map(week => week.filter(d => d.active)).filter(week => week.length > 0).map(week => {
       const completedCount = week.filter(d => d.completed).length;
       const percentage = Math.round((completedCount / week.length) * 100);
       const firstDate = new Date(week[0].date + 'T00:00:00');
@@ -175,7 +192,7 @@ function HabitDetailView({ habit, onBack, onEdit }) {
     const totalDays = rangeDays.length;
 
     if (totalDays <= 14) {
-      return rangeDays.map(day => {
+      return rangeDays.filter(day => day.active).map(day => {
         const date = new Date(day.date + 'T00:00:00');
         return {
           label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -186,7 +203,7 @@ function HabitDetailView({ habit, onBack, onEdit }) {
       return getWeeklyTrend(rangeDays);
     } else {
       const monthGroups = {};
-      rangeDays.forEach(day => {
+      rangeDays.filter(day => day.active).forEach(day => {
         const date = new Date(day.date + 'T00:00:00');
         const key = `${date.getFullYear()}-${date.getMonth()}`;
         if (!monthGroups[key]) {
@@ -239,12 +256,12 @@ function HabitDetailView({ habit, onBack, onEdit }) {
   };
 
   const getHeatmapCellClass = (day) => {
-    if (day.isPadding) return 'hm-cell-padding';
+    if (day.isPadding || !day.active) return 'hm-cell-padding';
     return day.completed ? 'hm-cell-completed' : 'hm-cell-empty';
   };
 
   const getHeatmapTooltip = (day) => {
-    if (day.isPadding) return '';
+    if (day.isPadding || !day.active) return '';
     return `${formatDateForTooltip(day.date)}${day.completed ? ' ✓' : ''}`;
   };
 
@@ -316,7 +333,6 @@ function HabitDetailView({ habit, onBack, onEdit }) {
   const monthLabelCandidates = trendView === 'heatmap' ? getMonthLabelCandidates(heatmapWeeks) : [];
   const layoutMode = rangeDays.length <= 30 ? 'calendar' : 'github';
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const todayStr = formatDate(new Date());
 
   const monthLabels = trendView === 'heatmap'
     ? getVisibleMonthLabels(monthLabelCandidates, cellSize)
@@ -652,11 +668,11 @@ function HabitDetailView({ habit, onBack, onEdit }) {
 
           <div className="comparison-row">
             <div className="comparison-card">
-              <div className="comparison-value">{thisRangeRate}%</div>
+              <div className="comparison-value">{formatRate(thisRangeRate)}</div>
               <div className="comparison-label">{rangeLabel}</div>
             </div>
             <div className="comparison-card">
-              <div className="comparison-value">{sinceCreatedRate}%</div>
+              <div className="comparison-value">{formatRate(sinceCreatedRate)}</div>
               <div className="comparison-label">Since Created</div>
             </div>
           </div>
