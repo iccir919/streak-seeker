@@ -73,7 +73,6 @@ function OverallContent({ habits, onBack }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const hmContainerRef = useRef(null);
   const scrollRegionRef = useRef(null);
-  const chartWrapperRef = useRef(null);
   const plotAreaRef = useRef(null);
   const tooltipRef = useRef(null);
 
@@ -572,7 +571,7 @@ function OverallContent({ habits, onBack }) {
 
         <div className="section">
           {trendView === 'chart' ? (
-            <div className="line-chart-wrapper" ref={chartWrapperRef}>
+            <div className="line-chart-wrapper">
               <div className="line-chart-plot-area" ref={plotAreaRef}>
                 <div className="line-chart-y-axis">
                   {yAxisTicks.map((tick) => (

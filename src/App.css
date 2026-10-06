@@ -217,31 +217,3 @@
   color: #999999;
   font-style: italic;
 }
-
-/* Views */
-.view {
-  min-height: 500px;
-}
-
-.view-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 20px;
-  border-bottom: 1px solid #E5E5E5;
-}
-
-.btn-back {
-  padding: 8px;
-  font-size: 20px;
-  transition: opacity 0.2s;
-}
-
-.btn-back:hover {
-  opacity: 0.6;
-}
-
-.view-title {
-  font-size: 18px;
-  font-weight: 600;
-}

@@ -32,7 +32,6 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
   const [cellSize, setCellSize] = useState(20);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const hmContainerRef = useRef(null);
-  const chartWrapperRef = useRef(null);
   const plotAreaRef = useRef(null);
   const tooltipRef = useRef(null);
 
@@ -117,11 +116,6 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
     if (!archiveStr) return null;
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(archiveStr + 'T00:00:00').toLocaleDateString('en-US', options);
-  };
-
-  const getDayOfWeek = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
   };
 
   const formatDateForTooltip = (dateStr) => {
@@ -526,7 +520,7 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
 
         <div className="section">
           {trendView === 'chart' ? (
-            <div className="line-chart-wrapper" ref={chartWrapperRef}>
+            <div className="line-chart-wrapper">
               <div className="line-chart-plot-area" ref={plotAreaRef}>
                 <div className="line-chart-y-axis">
                   {yAxisTicks.map((tick) => (
