@@ -177,6 +177,8 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
         const date = new Date(day.date + 'T00:00:00');
         return {
           label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          // Tooltip also names the weekday (the axis label stays short)
+          fullLabel: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
           percentage: day.completed ? 100 : 0
         };
       });

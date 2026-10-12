@@ -12,22 +12,6 @@ export const formatDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-// Get date N days ago
-export const getDaysAgo = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return formatDate(date);
-};
-
-// Get array of last N days
-export const getLastNDays = (n) => {
-  const dates = [];
-  for (let i = n - 1; i >= 0; i--) {
-    dates.push(getDaysAgo(i));
-  }
-  return dates;
-};
-
 // Get day of week (Mon, Tue, etc.)
 export const getDayOfWeek = (dateStr) => {
   const date = new Date(dateStr + 'T00:00:00');
@@ -37,7 +21,6 @@ export const getDayOfWeek = (dateStr) => {
 
 // Calculate current streak
 export const calculateCurrentStreak = (logs) => {
-  const today = getToday();
   let streak = 0;
   let currentDate = new Date();
   
@@ -76,46 +59,6 @@ export const calculateLongestStreak = (logs) => {
   }
   
   return longest;
-};
-
-// Get completion stats for different periods
-export const getCompletionStats = (logs, createdAt) => {
-  const today = new Date();
-  const created = new Date(createdAt);
-  
-  const getLast = (days) => {
-    let completed = 0;
-    let total = 0;
-    for (let i = 0; i < days; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = formatDate(date);
-      if (logs[dateStr] !== undefined) {
-        total++;
-        if (logs[dateStr]) completed++;
-      }
-    }
-    return { completed, total, rate: total > 0 ? Math.round((completed / total) * 100) : 0 };
-  };
-  
-  const getAllTime = () => {
-    const daysSinceCreation = Math.floor((today - created) / (1000 * 60 * 60 * 24)) + 1;
-    let completed = 0;
-    for (let i = 0; i < daysSinceCreation; i++) {
-      const date = new Date(created);
-      date.setDate(date.getDate() + i);
-      const dateStr = formatDate(date);
-      if (logs[dateStr]) completed++;
-    }
-    return { completed, total: daysSinceCreation, rate: Math.round((completed / daysSinceCreation) * 100) };
-  };
-  
-  return {
-    last7: getLast(7),
-    last30: getLast(30),
-    last90: getLast(90),
-    allTime: getAllTime()
-  };
 };
 
 // Longest range the Overall and Detail views will show.
