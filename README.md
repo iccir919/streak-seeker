@@ -1,9 +1,9 @@
 # 🔥 Streak Seeker
 
-A beautiful, privacy-first habit tracker Chrome extension. Track daily habits, build streaks, and visualize your progress—all without leaving your browser.
+A beautiful, privacy-first habit tracker Chrome extension. Track daily habits, build streaks, and visualize your progress, all without leaving your browser.
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome-Web%20Store-blue)](https://chromewebstore.google.com/detail/streak-seeker/jbldckdbhaibiejndigjmgdaacainphh?authuser=0&hl=en)
-[![Version](https://img.shields.io/badge/version-1.0.0-green)]()
+[![Version](https://img.shields.io/badge/version-1.2.0-green)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ![Streak Seeker Demo](./screenshots/main_view.png)
@@ -12,10 +12,15 @@ A beautiful, privacy-first habit tracker Chrome extension. Track daily habits, b
 
 - **🎯 Track Unlimited Habits** - Add as many habits as you want with custom emoji icons
 - **🔥 Visual Streak Tracking** - See your current streaks with fire emoji indicators
-- **📊 Interactive Heatmaps** - GitHub-style contribution graphs (7/30/90/180/365 days)
-- **📈 Detailed Stats** - Completion rates, perfect days, longest streaks
+- **📅 Today's Progress** - A progress bar on the main page shows how much of today is done
+- **📈 Line Charts** - Completion rate over time, with hover tooltips and automatic daily, weekly or monthly points
+- **📊 Heatmaps** - Calendar and GitHub-style heatmaps for any date range
+- **🗓️ Custom Date Ranges** - Pick any start and end date (up to two years), or use the 7, 30, 60 and 90 day presets
+- **🏆 Habit Stats** - Current and longest streaks, days since last completed, and completion rate for your range versus since you started
+- **🥇 Overall Stats** - Completion rate, perfect days, average completions per day, and a ranking of your habits
+- **🗃️ Archive Habits** - Retire a habit without losing its history; archived habits stop counting against your stats
 - **↕️ Drag & Drop** - Reorder habits with smooth animations
-- **🕰️ Time Travel** - Navigate through past dates to view historical data
+- **🕰️ Time Travel** - Navigate through past dates on the main page
 - **🔒 100% Private** - All data stored locally using browser localStorage
 - **🚫 No Login Required** - Start tracking immediately
 - **⚡ Lightweight** - Fast and responsive
@@ -30,7 +35,7 @@ A beautiful, privacy-first habit tracker Chrome extension. Track daily habits, b
 ### From Source
 1. Clone the repository
 ```bash
-   git clone https://github.com/YOUR-USERNAME/streak-seeker.git
+   git clone https://github.com/iccir919/streak-seeker.git
    cd streak-seeker
 ```
 
@@ -61,19 +66,31 @@ A beautiful, privacy-first habit tracker Chrome extension. Track daily habits, b
 ## 📸 Screenshots
 
 ### Main View
-Track your daily habits with a clean, minimal interface.
+Track your daily habits with a clean, minimal interface. Today's progress and a link to your overall stats sit right below your habits.
 
-![Main View](screenshots/main-view.png)
+![Main View](screenshots/main_view.png)
 
 ### Overall Stats
-View comprehensive statistics and heatmaps across different time periods.
+See how all your habits are doing together. Pick any date range and switch between a line chart and a heatmap.
 
-![Overall Stats](screenshots/overall-stats.png)
+![Overall Stats](screenshots/overall_stats.png)
+![Overall Heatmap](screenshots/overall_heatmap.png)
 
 ### Habit Details
-Deep dive into individual habit performance and trends.
+Dig into a single habit: streaks, days since last completed, and a chart or heatmap for any range.
 
-![Habit Details](screenshots/habit-detail.png)
+![Habit Details](screenshots/habit_detail.png)
+![Habit Heatmap](screenshots/habit_detail_heatmap.png)
+
+### Adding a Habit
+Name it, pick an emoji, and you're set.
+
+![New Habit](screenshots/new_habit.png)
+
+### First Run
+A friendly empty state with a few popular starting points.
+
+![Empty State](screenshots/empty_state.png)
 
 ## 🎯 Usage
 
@@ -89,9 +106,16 @@ Deep dive into individual habit performance and trends.
 - Today's column is highlighted for easy reference
 
 ### Viewing Stats
-- Click "📊 Overall Stats" to see heatmaps and insights
-- Click any habit emoji to view detailed statistics
-- Use ← → buttons to navigate through different time periods
+- Click "📊 Overall Stats" to see charts, heatmaps and a ranking of your habits
+- Click any habit emoji to open that habit's detail view
+- Use the date boxes to pick any range, or tap 7, 30, 60 or 90 Days
+- Switch between Chart and Heatmap under the graph
+- Use the ← → buttons on the main page to move through past dates
+
+### Archiving and Deleting
+- Open a habit's ≡ menu to Edit, Archive or Delete it
+- Archived habits move to the "Archived" list at the bottom, and their history is kept
+- Unarchive a habit from the same menu to bring it back
 
 ### Reordering Habits
 - Click and drag the ⋮ handle to reorder habits
@@ -131,11 +155,13 @@ streak-seeker/
 │   │   ├── HabitList.jsx
 │   │   ├── HabitRow.jsx
 │   │   ├── HabitModal.jsx
+│   │   ├── ActionMenu.jsx
+│   │   ├── ArchivedHabitList.jsx
 │   │   ├── HabitDetailView.jsx
 │   │   └── OverallView.jsx
 │   ├── utils/            # Utility functions
 │   │   ├── storage.js    # localStorage operations
-│   │   └── dateHelpers.js
+│   │   └── dateHelpers.js  # Date ranges and streak math
 │   ├── App.jsx           # Main app component
 │   └── main.jsx          # Entry point
 ├── dist/                 # Build output
