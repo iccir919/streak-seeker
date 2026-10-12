@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import './ActionMenu.css';
 
-function ActionMenu({ isOpen, onClose, onEdit, onArchive, onUnarchive, onDelete, isArchived = false }) {
+function ActionMenu({ isOpen, onClose, onEdit, onArchive, onUnarchive, onDelete, isArchived = false, align = 'left' }) {
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ function ActionMenu({ isOpen, onClose, onEdit, onArchive, onUnarchive, onDelete,
   };
 
   return (
-    <div className="action-menu" ref={menuRef}>
+    <div className={`action-menu ${align === 'right' ? 'action-menu-right' : ''}`} ref={menuRef}>
       <button 
         className="action-menu-item"
         onClick={() => handleAction(onEdit)}

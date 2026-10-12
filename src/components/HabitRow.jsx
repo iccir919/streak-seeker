@@ -58,31 +58,12 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchi
           {...listeners}
           title="Drag to reorder"
         >
-          ⋮
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+            <circle cx="3" cy="3" r="1.4" /><circle cx="7" cy="3" r="1.4" />
+            <circle cx="3" cy="8" r="1.4" /><circle cx="7" cy="8" r="1.4" />
+            <circle cx="3" cy="13" r="1.4" /><circle cx="7" cy="13" r="1.4" />
+          </svg>
         </button>
-      </div>
-
-      {/* Menu button */}
-      <div className="habit-menu-col">
-        <button 
-          className="menu-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMenuOpen(!menuOpen);
-          }}
-          title="Actions"
-        >
-          ≡
-        </button>
-        <ActionMenu
-          isOpen={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          onEdit={() => onEdit(habit)}
-          onArchive={() => onArchive(habit.id)}
-          onUnarchive={() => onUnarchive(habit.id)}
-          onDelete={handleDelete}
-          isArchived={habit.archived}
-        />
       </div>
 
       {/* Icon */}
@@ -114,6 +95,33 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchi
           </div>
         );
       })}
+      {/* Menu button - rightmost */}
+      <div className="habit-menu-col">
+        <button 
+          className="menu-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen(!menuOpen);
+          }}
+          title="Actions"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+            <rect x="1" y="2.5" width="12" height="1.6" rx="0.8" />
+            <rect x="1" y="6.2" width="12" height="1.6" rx="0.8" />
+            <rect x="1" y="9.9" width="12" height="1.6" rx="0.8" />
+          </svg>
+        </button>
+        <ActionMenu
+          align="right"
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          onEdit={() => onEdit(habit)}
+          onArchive={() => onArchive(habit.id)}
+          onUnarchive={() => onUnarchive(habit.id)}
+          onDelete={handleDelete}
+          isArchived={habit.archived}
+        />
+      </div>
     </div>
   );
 }

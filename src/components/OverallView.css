@@ -369,17 +369,6 @@
   overflow: visible;
 }
 
-.ov-hm-container.is-scrollable::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 24px;
-  height: 100%;
-  background: linear-gradient(to right, rgba(255,255,255,0), white);
-  pointer-events: none;
-}
-
 /* Shared cell styling */
 .ov-hm-cell {
   width: var(--hm-cell-size);

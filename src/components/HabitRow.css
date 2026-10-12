@@ -1,7 +1,7 @@
 /* Grid layout for perfect alignment */
 .habit-grid-header {
   display: grid;
-  grid-template-columns: 14px 14px 72px repeat(10, 28px);
+  grid-template-columns: 20px 56px repeat(10, minmax(28px, 1fr)) 20px;
   column-gap: 4px;
   row-gap: 0px;
   padding: 4px;
@@ -12,7 +12,7 @@
 
 .habit-grid-row {
   display: grid;
-  grid-template-columns: 14px 14px 72px repeat(10, 28px);
+  grid-template-columns: 20px 56px repeat(10, minmax(28px, 1fr)) 20px;
   column-gap: 4px;
   row-gap: 0px;
   align-items: center;
@@ -31,7 +31,7 @@
   align-items: center;
   gap: 3px;
   padding: 0;
-  grid-column: span 3;
+  grid-column: span 2;
 }
 
 .date-range {
@@ -74,11 +74,18 @@
 }
 
 .drag-handle {
-  font-size: 14px;
-  padding: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
   color: #666666;
   cursor: grab;
   touch-action: none;
+  user-select: none;
   background: none;
   border: none;
 }
@@ -96,8 +103,14 @@
 }
 
 .menu-btn {
-  font-size: 14px;
-  padding: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
   color: #666666;
   cursor: pointer;
   background: none;
@@ -114,7 +127,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-right: 10px;
 }
 
 .habit-icon-btn {
@@ -141,6 +153,7 @@
   border: 2px solid transparent;
   transition: border-color 0.2s;
   width: 28px;
+  justify-self: center;
   box-sizing: border-box;
 }
 
@@ -179,6 +192,7 @@
   transition: border-color 0.2s;
   width: 28px;
   height: 28px;
+  justify-self: center;
   box-sizing: border-box;
 }
 

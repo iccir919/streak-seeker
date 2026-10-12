@@ -69,7 +69,6 @@ function OverallContent({ habits, onBack }) {
   const [activePreset, setActivePreset] = useState(30);
   const [trendView, setTrendView] = useState('chart'); // 'chart' | 'heatmap'
   const [cellSize, setCellSize] = useState(20);
-  const [isScrollable, setIsScrollable] = useState(false);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const hmContainerRef = useRef(null);
   const scrollRegionRef = useRef(null);
@@ -403,34 +402,6 @@ function OverallContent({ habits, onBack }) {
     return () => window.removeEventListener('resize', calculate);
   }, [trendView, layoutMode, heatmapWeeks.length]);
 
-  // FIX: tolerance is now roughly one cell-width instead of a couple
-  // px, so a trailing sliver (e.g. padding cells finishing out the
-  // last week) doesn't keep the fade showing after you've scrolled as
-  // far as there is meaningful content to see.
-  useEffect(() => {
-    if (trendView !== 'heatmap' || layoutMode !== 'github') {
-      setIsScrollable(false);
-      return;
-    }
-
-    const el = scrollRegionRef.current;
-    if (!el) return;
-
-    const updateFade = () => {
-      const remaining = el.scrollWidth - el.scrollLeft - el.clientWidth;
-      const tolerance = Math.max(8, cellSize);
-      setIsScrollable(remaining > tolerance);
-    };
-
-    updateFade();
-    el.addEventListener('scroll', updateFade);
-    window.addEventListener('resize', updateFade);
-    return () => {
-      el.removeEventListener('scroll', updateFade);
-      window.removeEventListener('resize', updateFade);
-    };
-  }, [trendView, layoutMode, cellSize, heatmapWeeks.length]);
-
   const stats = calculateStats(rangeData);
   const habitStats = getHabitStats(rangeData);
   const trendData = getTrendData(rangeData);
@@ -677,7 +648,7 @@ function OverallContent({ habits, onBack }) {
               </div>
             </div>
           ) : (
-            <div className={`ov-hm-container ${isScrollable ? 'is-scrollable' : ''}`} ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
+            <div className="ov-hm-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
               <div className="ov-hm-day-labels">
                 {dayLabels.map((label) => (
                   <div key={label} className="ov-hm-day-label">{label}</div>
