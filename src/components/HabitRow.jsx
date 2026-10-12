@@ -7,10 +7,11 @@ import ActionMenu from './ActionMenu';
 import './HabitRow.css';
 
 function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchive, onUnarchive, onDelete }) {
-  if (!habit || !habit.id) return null;
-  
+  // All hooks run first; the missing-habit guard comes after them so the
+  // hook order never changes between renders.
   const [menuOpen, setMenuOpen] = useState(false);
-  const logs = getHabitLogs(habit.id);
+  const habitId = habit?.id;
+  const logs = habitId ? getHabitLogs(habitId) : {};
   const currentStreak = calculateCurrentStreak(logs);
 
   const {
@@ -20,7 +21,9 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchi
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: habit.id });
+  } = useSortable({ id: habitId });
+
+  if (!habit || !habitId) return null;
 
   const style = {
     transform: CSS.Transform.toString(transform),
