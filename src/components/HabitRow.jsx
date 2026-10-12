@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { getDayOfWeek, calculateCurrentStreak } from '../utils/dateHelpers';
 import { getHabitLogs } from '../utils/storage';
 import ActionMenu from './ActionMenu';
+import MenuIcon from './MenuIcon';
 import './HabitRow.css';
 
 function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchive, onUnarchive, onDelete }) {
@@ -87,7 +88,7 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchi
         const dayOfWeek = getDayOfWeek(date);
         
         return (
-          <div key={date} className="day-col">
+          <div key={date} className={`day-col ${date === today ? 'today-col' : ''}`}>
             <button
               className={`checkbox ${isCompleted ? 'checked' : ''} ${isStreak ? 'streak' : ''}`}
               onClick={() => onToggle(habit.id, date)}
@@ -108,11 +109,7 @@ function HabitRow({ habit, dates, today, onToggle, onHabitClick, onEdit, onArchi
           }}
           title="Actions"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-            <rect x="1" y="2.5" width="12" height="1.6" rx="0.8" />
-            <rect x="1" y="6.2" width="12" height="1.6" rx="0.8" />
-            <rect x="1" y="9.9" width="12" height="1.6" rx="0.8" />
-          </svg>
+          <MenuIcon />
         </button>
         <ActionMenu
           align="right"

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ActionMenu from './ActionMenu';
+import MenuIcon from './MenuIcon';
 import './ArchivedHabitList.css';
 
 function ArchivedHabitList({ habits, onHabitClick, onEdit, onUnarchive, onDelete }) {
@@ -34,6 +35,14 @@ function ArchivedHabitList({ habits, onHabitClick, onEdit, onUnarchive, onDelete
         <div className="archived-items">
           {archivedHabits.map((habit) => (
             <div key={habit.id} className="archived-habit-row">
+              <button 
+                className="archived-habit-content"
+                onClick={() => onHabitClick(habit.id)}
+                title={`View ${habit.name}`}
+              >
+                <span className="archived-habit-icon">{habit.icon}</span>
+                <span className="archived-habit-name">{habit.name}</span>
+              </button>
               <div className="archived-menu-wrapper">
                 <button 
                   className="menu-btn"
@@ -43,9 +52,10 @@ function ArchivedHabitList({ habits, onHabitClick, onEdit, onUnarchive, onDelete
                   }}
                   title="Actions"
                 >
-                  ≡
+                  <MenuIcon />
                 </button>
                 <ActionMenu
+                  align="right"
                   isOpen={menuOpenId === habit.id}
                   onClose={() => setMenuOpenId(null)}
                   onEdit={() => onEdit(habit)}
@@ -54,14 +64,6 @@ function ArchivedHabitList({ habits, onHabitClick, onEdit, onUnarchive, onDelete
                   isArchived={true}
                 />
               </div>
-              <button 
-                className="archived-habit-content"
-                onClick={() => onHabitClick(habit.id)}
-                title={`View ${habit.name}`}
-              >
-                <span className="archived-habit-icon">{habit.icon}</span>
-                <span className="archived-habit-name">{habit.name}</span>
-              </button>
             </div>
           ))}
         </div>
