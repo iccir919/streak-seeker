@@ -1,5 +1,18 @@
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useEffect, useRef } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
 import { getDayOfWeek, getToday } from '../utils/dateHelpers';
 import HabitRow from './HabitRow';
 import './HabitList.css';
@@ -17,6 +30,31 @@ function HabitList({
   onReorder
 }) {
   const activeHabits = habits.filter(h => !h.archived);
+
+  // Mouse and touch sensors instead of PointerSensor: more reliable
+  // inside the extension popup. Keyboard sensor lets the grip be used
+  // with Tab, Space and the arrow keys as well.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Chrome extension popups fire a window "resize" event as soon as a drag
+  // starts (the popup re-fits its content). dnd-kit treats any resize as a
+  // reason to cancel the drag, so the drag died instantly in the popup.
+  // While a drag is active we swallow resize events before dnd-kit sees them.
+  const isDraggingRef = useRef(false);
+
+  useEffect(() => {
+    const swallowResize = (event) => {
+      if (isDraggingRef.current) {
+        event.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('resize', swallowResize, true);
+    return () => window.removeEventListener('resize', swallowResize, true);
+  }, []);
 
   if (activeHabits.length === 0) {
     return null;
@@ -58,13 +96,8 @@ function HabitList({
 
   const isToday = dateOffset === 0;
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
-  );
-
   const handleDragEnd = (event) => {
+    isDraggingRef.current = false;
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = habits.findIndex((habit) => habit.id === active.id);
@@ -108,6 +141,8 @@ function HabitList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={() => { isDraggingRef.current = true; }}
+        onDragCancel={() => { isDraggingRef.current = false; }}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
