@@ -255,20 +255,22 @@
   font-size: 13px;
 }
 
+/* Labels are positioned by percentage so each one sits under its point */
 .line-chart-labels {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 12px;
   margin-top: 6px;
   margin-left: 34px;
 }
 
 .line-chart-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
   font-size: 8px;
   font-weight: 500;
   color: #999999;
   white-space: nowrap;
-  flex: 1;
-  text-align: center;
 }
 
 /* View toggle (Chart / Heatmap) */

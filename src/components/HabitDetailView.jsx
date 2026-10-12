@@ -376,6 +376,9 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
     const y = chartPadding + (1 - item.percentage / 100) * (chartHeight - chartPadding * 2);
     return { x, y, ...item };
   });
+  // Each label sits directly under its own point. When there are too many
+  // points to label without overlap, show every 2nd, 3rd, etc.
+  const labelStep = Math.max(1, Math.ceil(points.length / 14));
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const areaPath = points.length > 0
     ? `${linePath} L ${points[points.length - 1].x} ${chartHeight} L ${points[0].x} ${chartHeight} Z`
@@ -586,8 +589,16 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
                 )}
               </div>
               <div className="line-chart-labels">
-                {trendData.map((item, index) => (
-                  <span key={index} className="line-chart-label">{item.label}</span>
+                {points.map((p, index) => (
+                  index % labelStep === 0 && (
+                    <span
+                      key={index}
+                      className="line-chart-label"
+                      style={{ left: `${(p.x / chartWidth) * 100}%` }}
+                    >
+                      {p.label}
+                    </span>
+                  )
                 ))}
               </div>
             </div>
