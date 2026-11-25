@@ -36,7 +36,7 @@ const isActiveOnDate = (info, dateStr) => {
 
 // Wrapper only decides between the empty state and the real view. All
 // hooks live in OverallContent so they always run in the same order.
-function OverallView({ onBack }) {
+function OverallView({ onBack, onHabitClick }) {
   const habits = getHabits();
 
   if (habits.length === 0) {
@@ -62,10 +62,10 @@ function OverallView({ onBack }) {
     );
   }
 
-  return <OverallContent habits={habits} onBack={onBack} />;
+  return <OverallContent habits={habits} onBack={onBack} onHabitClick={onHabitClick} />;
 }
 
-function OverallContent({ habits, onBack }) {
+function OverallContent({ habits, onBack, onHabitClick }) {
   // Read storage ONCE per set of habits (not once per habit per day).
   // Each entry holds that habit's logs plus its start and archive days.
   const habitData = useMemo(() => {
@@ -94,7 +94,7 @@ function OverallContent({ habits, onBack }) {
   const [trendViewChoice, setTrendViewChoice] = useState(null); // null | 'chart' | 'heatmap'
   const [cellSize, setCellSize] = useState(20);
   const [hoveredPoint, setHoveredPoint] = useState(null);
-  const hmContainerRef = useRef(null);
+  const bodyRef = useRef(null);
   const scrollRegionRef = useRef(null);
   const plotAreaRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -414,10 +414,10 @@ function OverallContent({ habits, onBack }) {
     : [];
 
   useLayoutEffect(() => {
-    if (trendView !== 'heatmap' || !hmContainerRef.current) return;
+    if (!bodyRef.current) return;
 
     const calculate = () => {
-      const containerWidth = hmContainerRef.current.offsetWidth;
+      const containerWidth = bodyRef.current.offsetWidth;
       const gap = HEATMAP_GAP;
       const dayLabelWidth = 28;
       // Same square size for every range: sized so HEATMAP_FIT_WEEKS columns
@@ -430,7 +430,7 @@ function OverallContent({ habits, onBack }) {
     calculate();
     window.addEventListener('resize', calculate);
     return () => window.removeEventListener('resize', calculate);
-  }, [trendView]);
+  }, []);
 
   // Open scrolled to the newest week, so a long range never hides today.
   useLayoutEffect(() => {
@@ -439,6 +439,32 @@ function OverallContent({ habits, onBack }) {
   }, [trendView, heatmapWeeks.length, cellSize, startDate, endDate]);
 
   const stats = calculateStats(rangeData);
+
+  // Completion by weekday across all habits in the range (0 = Sunday).
+  const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const weekdayTotals = weekdayNames.map(() => ({ done: 0, possible: 0 }));
+  rangeData.forEach(day => {
+    const total = weekdayTotals[new Date(day.date + 'T00:00:00').getDay()];
+    total.done += day.completedCount;
+    total.possible += day.totalHabits;
+  });
+  const weekdayRates = weekdayTotals.map(t => (t.possible > 0 ? Math.round((t.done / t.possible) * 100) : null));
+  const knownWeekdayRates = weekdayRates.filter(rate => rate !== null);
+  // Only highlight a best day when the days actually differ.
+  const weekdaySpread = knownWeekdayRates.length > 0 && Math.max(...knownWeekdayRates) > Math.min(...knownWeekdayRates);
+  const bestWeekdayRate = weekdaySpread ? Math.max(...knownWeekdayRates) : null;
+
+  let weekdayInsight = 'Not enough data in this range yet.';
+  if (knownWeekdayRates.length > 0) {
+    if (!weekdaySpread) {
+      weekdayInsight = knownWeekdayRates[0] === 100
+        ? 'You did everything on every day in this range.'
+        : `Every weekday is about the same: ${knownWeekdayRates[0]}%.`;
+    } else {
+      const weakest = Math.min(...knownWeekdayRates);
+      weekdayInsight = `Your weakest day is ${weekdayNames[weekdayRates.indexOf(weakest)]}: ${weakest}%. Best day: ${weekdayNames[weekdayRates.indexOf(bestWeekdayRate)].slice(0, 3)}.`;
+    }
+  }
   const trackedDayCount = rangeData.filter(day => day.totalHabits > 0).length;
   let rangeNote = null;
   if (trackedDayCount === 0) {
@@ -599,7 +625,56 @@ function OverallContent({ habits, onBack }) {
           {/* Always rendered so the space is reserved and nothing below shifts */}
           <p className="ov-range-note">{rangeNote || '\u00A0'}</p>
 
-          {trendView === 'chart' ? (
+          <div className="view-toggle">
+            <button
+              className={`view-toggle-btn ${trendView === 'chart' ? 'active' : ''}`}
+              onClick={() => setTrendViewChoice('chart')}
+            >
+              Chart
+            </button>
+            <button
+              className={`view-toggle-btn ${trendView === 'heatmap' ? 'active' : ''}`}
+              onClick={() => setTrendViewChoice('heatmap')}
+            >
+              Heatmap
+            </button>
+            <button
+              className={`view-toggle-btn ${trendView === 'weekdays' ? 'active' : ''}`}
+              onClick={() => setTrendViewChoice('weekdays')}
+            >
+              Weekdays
+            </button>
+          </div>
+
+          <div className="ov-tab-body" ref={bodyRef}>
+          {trendView === 'weekdays' ? (
+            <div className="ov-wd">
+              <div className="ov-wd-bars">
+                {weekdayNames.map((name, i) => {
+                  const rate = weekdayRates[i];
+                  const isBest = bestWeekdayRate !== null && rate === bestWeekdayRate;
+                  const total = weekdayTotals[i];
+                  return (
+                    <div
+                      key={name}
+                      className="ov-wd-col"
+                      title={total.possible > 0 ? `${total.done} of ${total.possible} done on ${name}s` : `No ${name}s in this range`}
+                    >
+                      <div className={`ov-wd-pct ${isBest ? 'ov-wd-best' : ''}`}>{rate === null ? '-' : `${rate}%`}</div>
+                      <div className="ov-wd-track">
+                        <div
+                          className={`ov-wd-bar ${isBest ? 'ov-wd-bar-best' : ''}`}
+                          style={{ height: `${rate || 0}%` }}
+                        />
+                      </div>
+                      <div className={`ov-wd-name ${isBest ? 'ov-wd-best' : ''}`}>{name.slice(0, 3)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="ov-wd-insight">{weekdayInsight}</p>
+            </div>
+          ) : trendView === 'chart' ? (
             <div className="line-chart-wrapper">
               <div className="line-chart-plot-area" ref={plotAreaRef}>
                 <div className="line-chart-y-axis">
@@ -678,7 +753,7 @@ function OverallContent({ habits, onBack }) {
               </div>
             </div>
           ) : (
-            <div className="ov-hm-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
+            <div className="ov-hm-container" style={{ '--hm-cell-size': `${cellSize}px` }}>
               <div className="ov-hm-day-labels">
                 {dayLabels.map((label) => (
                   <div key={label} className="ov-hm-day-label">{label}</div>
@@ -708,21 +783,8 @@ function OverallContent({ habits, onBack }) {
               </div>
             </div>
           )}
-
-          <div className="view-toggle">
-            <button
-              className={`view-toggle-btn ${trendView === 'chart' ? 'active' : ''}`}
-              onClick={() => setTrendViewChoice('chart')}
-            >
-              Chart
-            </button>
-            <button
-              className={`view-toggle-btn ${trendView === 'heatmap' ? 'active' : ''}`}
-              onClick={() => setTrendViewChoice('heatmap')}
-            >
-              Heatmap
-            </button>
           </div>
+
         </div>
 
         <div className="section">
@@ -732,7 +794,12 @@ function OverallContent({ habits, onBack }) {
               <p className="no-data-message">No habit data in this range</p>
             ) : (
               habitStats.map((item, index) => (
-                <div key={item.habit.id} className="ranking-row">
+                <div
+                  key={item.habit.id}
+                  className={`ranking-row ${onHabitClick ? 'ranking-row-clickable' : ''}`}
+                  onClick={onHabitClick ? () => onHabitClick(item.habit.id) : undefined}
+                  title={onHabitClick ? `Open ${item.habit.name}` : undefined}
+                >
                   <div className="ranking-position">{index + 1}</div>
                   <div className="ranking-habit">
                     <span className="ranking-icon">{item.habit.icon}</span>

@@ -22,6 +22,8 @@ function App() {
   const [view, setView] = useState('main');
   const [habits, setHabits] = useState([]);
   const [selectedHabitId, setSelectedHabitId] = useState(null);
+  // Where the detail view's back button returns to ('main' or 'overall')
+  const [detailFrom, setDetailFrom] = useState('main');
   const [showModal, setShowModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null);
   const [dateOffset, setDateOffset] = useState(0);
@@ -78,8 +80,9 @@ function App() {
     setView('main');
   };
 
-  const handleHabitClick = (habitId) => {
+  const handleHabitClick = (habitId, from = 'main') => {
     setSelectedHabitId(habitId);
+    setDetailFrom(from);
     setView('detail');
   };
 
@@ -250,7 +253,10 @@ function App() {
   if (view === 'overall') {
     return (
       <div className="app">
-        <OverallView onBack={handleBackToMain} />
+        <OverallView
+          onBack={handleBackToMain}
+          onHabitClick={(habitId) => handleHabitClick(habitId, 'overall')}
+        />
       </div>
     );
   }
@@ -261,7 +267,7 @@ function App() {
       <div className="app">
         <HabitDetailView
           habit={selectedHabit}
-          onBack={handleBackToMain}
+          onBack={() => setView(detailFrom)}
           onEdit={handleEditHabit}
         />
         

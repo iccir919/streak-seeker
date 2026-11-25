@@ -431,6 +431,16 @@
   border-radius: 4px;
 }
 
+.ranking-row-clickable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ranking-row-clickable:hover {
+  background: #FAFAFA;
+  border-color: #666666;
+}
+
 .ranking-position {
   font-size: 14px;
   font-weight: 700;
@@ -564,4 +574,64 @@
 
 .overall-content::-webkit-scrollbar-thumb:hover {
   background: #D0D0D0;
+}
+/* Weekdays view: pooled completion by day of week */
+.ov-wd {
+  margin-bottom: 16px;
+}
+
+.ov-wd-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.ov-wd-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: default;
+}
+
+.ov-wd-pct {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.ov-wd-track {
+  width: 22px;
+  height: 130px;
+  background: #EEEEEE;
+  border-radius: 3px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.ov-wd-bar {
+  width: 100%;
+  background: #6B6B6B;
+}
+
+.ov-wd-bar-best {
+  background: black;
+}
+
+.ov-wd-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.ov-wd-best {
+  color: black;
+}
+
+.ov-wd-insight {
+  font-size: 12px;
+  color: #444444;
+  text-align: center;
+  margin: 14px 0 0;
 }
