@@ -1,7 +1,25 @@
 import { useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { getHabitLogs } from '../utils/storage';
-import { calculateCurrentStreak, calculateLongestStreak, formatDate, normalizeRange, toDateString, groupIntoWeeks } from '../utils/dateHelpers';
+import { getStreakRuns, formatDate, getToday, addDays, getDefaultPresetDays, normalizeRange, toDateString, countDaysInclusive, PRESET_DAYS } from '../utils/dateHelpers';
 import './HabitDetailView.css';
+
+// Heatmap spacing. Narrow gaps keep the "ghost dots" (Hermann grid
+// illusion) from showing between the squares. Keep HEATMAP_GAP in sync
+// with the gap values in the .hm-* CSS rules.
+const HEATMAP_GAP = 3;
+// The heatmap always shows at least this many days (12 weeks) ending on the
+// end date, so its shape stays the same at every preset. Days outside the
+// selected range are faded.
+const HEATMAP_MIN_DAYS = 84;
+// Square size is chosen so this many weeks fit the popup width. A longer
+// custom range keeps the same size and scrolls sideways.
+const HEATMAP_FIT_WEEKS = 13;
+const HEATMAP_MAX_CELL = 36;
+// Extra gap before each new month, in px. Keep in sync with the CSS.
+const HEATMAP_MONTH_GAP = 7;
+
+// Days in a row needed to count as a streak
+const MIN_STREAK_DAYS = 2;
 
 const formatRate = (rate) => (rate === null ? 'N/A' : `${rate}%`);
 
@@ -13,34 +31,43 @@ function HabitDetailView({ habit, onBack, onEdit }) {
 }
 
 function HabitDetailContent({ habit, onBack, onEdit }) {
-  const getDefaultStartDate = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 29);
-    return formatDate(date);
-  };
-
-  const getDefaultEndDate = () => {
-    return formatDate(new Date());
-  };
-
-  const [startDate, setStartDate] = useState(getDefaultStartDate());
-  const [endDate, setEndDate] = useState(getDefaultEndDate());
-  const [activePreset, setActivePreset] = useState(30);
-  // null = nothing picked yet, so short ranges default to the heatmap.
-  // Once the user clicks Chart or Heatmap, their choice sticks.
-  const [trendViewChoice, setTrendViewChoice] = useState(null); // null | 'chart' | 'heatmap'
-  const [cellSize, setCellSize] = useState(20);
-  const [hoveredPoint, setHoveredPoint] = useState(null);
-  const hmContainerRef = useRef(null);
-  const plotAreaRef = useRef(null);
-  const tooltipRef = useRef(null);
-
   // Read from storage once per habit, not on every hover/re-render.
   const logs = useMemo(() => getHabitLogs(habit.id), [habit.id]);
-  const currentStreak = calculateCurrentStreak(logs);
-  const longestStreak = calculateLongestStreak(logs);
-
   const todayStr = formatDate(new Date());
+
+  // Streaks: a streak is 2 or more days in a row. The current streak ends
+  // today, the longest is the most recent one if tied, and the previous is
+  // the streak before the current one (or the one that just ended when
+  // there is no current streak).
+  const completionRuns = useMemo(() => getStreakRuns(logs), [logs]);
+  const streakRuns = completionRuns.filter(run => run.length >= MIN_STREAK_DAYS);
+  const lastStreak = streakRuns[streakRuns.length - 1] || null;
+  const currentRun = lastStreak && lastStreak.end === todayStr ? lastStreak : null;
+  const lastCompletionRun = completionRuns[completionRuns.length - 1] || null;
+
+  // 'Sep 3', with the year added when it is not this year.
+  const formatShortDate = (dateStr, withYear = false) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const showYear = withYear || date.getFullYear() !== new Date().getFullYear();
+    return date.toLocaleDateString('en-US', showYear
+      ? { month: 'short', day: 'numeric', year: 'numeric' }
+      : { month: 'short', day: 'numeric' });
+  };
+  // 'Sep 3 to Oct 3'. For a run in another year the year is shown once, at
+  // the end ('Dec 3 to Dec 19, 2025'), so it stays on one line. A run that
+  // crosses a year boundary shows the year on both dates.
+  const formatRun = (run) => {
+    if (run.start === run.end) return formatShortDate(run.start);
+    const startYear = run.start.slice(0, 4);
+    const endYear = run.end.slice(0, 4);
+    const thisYear = String(new Date().getFullYear());
+    if (startYear !== endYear) return `${formatShortDate(run.start, true)} to ${formatShortDate(run.end, true)}`;
+    if (endYear !== thisYear) {
+      const startNoYear = new Date(run.start + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `${startNoYear} to ${formatShortDate(run.end)}`;
+    }
+    return `${formatShortDate(run.start)} to ${formatShortDate(run.end)}`;
+  };
 
   // Earlier of: the day the habit was created, or its first logged
   // completion (covers habits that were back-filled).
@@ -54,27 +81,24 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
   const habitStartStr = getHabitStartStr();
   const archiveStr = toDateString(habit.archivedAt);
 
+  // Opens on the smallest preset (2, 4, 8 or 12 weeks) that covers the
+  // habit's whole history.
+  const [defaultDays] = useState(() => getDefaultPresetDays(habitStartStr));
+  const [startDate, setStartDate] = useState(() => addDays(getToday(), -(defaultDays - 1)));
+  const [endDate, setEndDate] = useState(getToday());
+  const [activePreset, setActivePreset] = useState(defaultDays);
+  const [tab, setTab] = useState('chart'); // 'chart' | 'heatmap' | 'weekdays' | 'streaks'
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const [cellSize, setCellSize] = useState(20);
+  const bodyRef = useRef(null);
+  const scrollRegionRef = useRef(null);
+
   // A day counts only if the habit existed and was not yet archived.
   const isActiveOn = (dateStr) => {
     if (!habitStartStr) return false;
     if (dateStr < habitStartStr) return false;
     if (archiveStr && dateStr > archiveStr) return false;
     return true;
-  };
-
-  const getDaysSinceLastCompleted = () => {
-    const completedDates = Object.keys(logs).filter(d => logs[d]).sort();
-    
-    if (completedDates.length === 0) {
-      return null;
-    }
-
-    const lastDateStr = completedDates[completedDates.length - 1];
-    const lastDate = new Date(lastDateStr + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    return Math.round((today - lastDate) / (1000 * 60 * 60 * 24));
   };
 
   // Rate for a list of days, counting only days the habit was active.
@@ -104,7 +128,6 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
   };
 
   const sinceCreatedRate = getSinceCreatedRate();
-  const daysSinceLastCompleted = getDaysSinceLastCompleted();
 
   const formatStartDate = () => {
     if (!habitStartStr) return 'Unknown';
@@ -124,18 +147,13 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
     return date.toLocaleDateString('en-US', options);
   };
 
-  const formatDateShort = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
   // Walks the start/end span one calendar day at a time (avoids the DST
   // off-by-one that dividing milliseconds can cause). Each day records
   // whether the habit was active, and whether it was completed.
-  const generateDays = () => {
+  const generateDays = (startStr = startDate, endStr = endDate) => {
     const result = [];
-    const cursor = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
+    const cursor = new Date(startStr + 'T00:00:00');
+    const end = new Date(endStr + 'T00:00:00');
 
     while (cursor <= end) {
       const dateStr = formatDate(cursor);
@@ -144,67 +162,6 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
       cursor.setDate(cursor.getDate() + 1);
     }
     return result;
-  };
-
-  // 7-day points counted back from the end date, so the newest point is
-  // always a full week. Only active days count; a point with fewer than
-  // 7 active days says so in its tooltip.
-  const getWeeklyTrend = (days) => {
-    return groupIntoWeeks(days)
-      .map(week => week.filter(d => d.active))
-      .filter(week => week.length > 0)
-      .map(week => {
-        const completedCount = week.filter(d => d.completed).length;
-        const percentage = Math.round((completedCount / week.length) * 100);
-        const firstDate = new Date(week[0].date + 'T00:00:00');
-        const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
-        const shortDate = { month: 'short', day: 'numeric' };
-        const dayNote = week.length < 7 ? ` (${week.length} day${week.length === 1 ? '' : 's'})` : '';
-        return {
-          label: firstDate.toLocaleDateString('en-US', shortDate),
-          fullLabel: `${firstDate.toLocaleDateString('en-US', shortDate)} - ${lastDate.toLocaleDateString('en-US', shortDate)}${dayNote}`,
-          percentage
-        };
-      });
-  };
-
-  // Adaptive granularity, same thresholds as Overall's getTrendData.
-  const getTrendData = (rangeDays) => {
-    const totalDays = rangeDays.length;
-
-    if (totalDays <= 14) {
-      return rangeDays.filter(day => day.active).map(day => {
-        const date = new Date(day.date + 'T00:00:00');
-        return {
-          label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          // Tooltip also names the weekday (the axis label stays short)
-          fullLabel: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-          percentage: day.completed ? 100 : 0
-        };
-      });
-    } else if (totalDays < 180) {
-      return getWeeklyTrend(rangeDays);
-    } else {
-      const monthGroups = {};
-      rangeDays.filter(day => day.active).forEach(day => {
-        const date = new Date(day.date + 'T00:00:00');
-        const key = `${date.getFullYear()}-${date.getMonth()}`;
-        if (!monthGroups[key]) {
-          monthGroups[key] = {
-            label: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-            completed: 0,
-            total: 0
-          };
-        }
-        monthGroups[key].total += 1;
-        if (day.completed) monthGroups[key].completed += 1;
-      });
-      return Object.values(monthGroups).map(group => ({
-        label: group.label,
-        fullLabel: group.label,
-        percentage: group.total > 0 ? Math.round((group.completed / group.total) * 100) : 0
-      }));
-    }
   };
 
   const getHeatmapGrid = (days) => {
@@ -240,8 +197,11 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
 
   const getHeatmapCellClass = (day) => {
     if (day.isPadding || !day.active) return 'hm-cell-padding';
-    return day.completed ? 'hm-cell-completed' : 'hm-cell-empty';
+    if (!day.completed) return 'hm-cell-empty';
+    return 'hm-cell-streak';
   };
+
+  const isOutsideRange = (day) => !day.isPadding && (day.date < startDate || day.date > endDate);
 
   const getHeatmapTooltip = (day) => {
     if (day.isPadding || !day.active) return '';
@@ -300,6 +260,17 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
     setActivePreset(days);
   };
 
+  // Since created: from the habit's first day through today (or through
+  // the archive day for an archived habit).
+  const handleSinceCreatedClick = () => {
+    if (!habitStartStr) return;
+    const endStr = archiveStr && archiveStr < todayStr ? archiveStr : todayStr;
+    const range = normalizeRange(habitStartStr, endStr, 'start');
+    setStartDate(range.start);
+    setEndDate(range.end);
+    setActivePreset('created');
+  };
+
   // An empty value means the user cleared the field (or is mid-typing),
   // so keep the last valid date instead of breaking the range.
   const handleStartDateChange = (e) => {
@@ -319,120 +290,196 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
   };
 
   const rangeDays = generateDays();
-  const trendData = getTrendData(rangeDays);
-  // Ranges of 14 days or fewer are plotted one day at a time, so every
-  // point is 0% or 100% and the line just zigzags. A strip of squares
-  // shows that much better, so it is the default there.
-  const trendView = trendViewChoice || (rangeDays.length <= 14 ? 'heatmap' : 'chart');
-  const heatmapWeeks = trendView === 'heatmap' ? getHeatmapGrid(rangeDays) : [];
-  const monthLabelCandidates = trendView === 'heatmap' ? getMonthLabelCandidates(heatmapWeeks) : [];
-  const layoutMode = rangeDays.length <= 30 ? 'calendar' : 'github';
+  // The heatmap and the streak timeline cover at least HEATMAP_MIN_DAYS
+  // ending on the end date; days outside the selected range are faded.
+  const windowStart = rangeDays.length >= HEATMAP_MIN_DAYS ? startDate : addDays(endDate, -(HEATMAP_MIN_DAYS - 1));
+  const heatmapDays = tab === 'heatmap' ? generateDays(windowStart, endDate) : [];
+  const heatmapWeeks = getHeatmapGrid(heatmapDays);
+  const monthLabelCandidates = tab === 'heatmap' ? getMonthLabelCandidates(heatmapWeeks) : [];
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const monthLabels = trendView === 'heatmap'
+  const monthLabels = tab === 'heatmap'
     ? getVisibleMonthLabels(monthLabelCandidates, cellSize)
     : [];
 
+  // Rolling completion rate: for each day in the range, the share of the
+  // last 7 days (that the habit existed) that were done. Days before the
+  // range start count too, so the line starts full instead of ramping up.
+  const ROLLING_DAYS = 7;
+  const rollingPoints = tab === 'chart'
+    ? rangeDays.map((day) => {
+        let active = 0;
+        let done = 0;
+        for (let i = 0; i < ROLLING_DAYS; i++) {
+          const d = addDays(day.date, -i);
+          if (!isActiveOn(d)) continue;
+          active += 1;
+          if (logs[d]) done += 1;
+        }
+        return { date: day.date, rate: active > 0 ? Math.round((done / active) * 100) : null };
+      })
+    : [];
+  const rollingCount = rollingPoints.length;
+  const rollingX = (i) => (rollingCount > 1 ? (i / (rollingCount - 1)) * 100 : 50);
+  const rollingY = (rate) => 100 - rate;
+  // One path, restarted after any gap (days before the habit existed).
+  let rollingLine = '';
+  let rollingArea = '';
+  let segmentStart = null;
+  rollingPoints.forEach((point, i) => {
+    if (point.rate === null) { segmentStart = null; return; }
+    const cmd = segmentStart === null ? 'M' : 'L';
+    rollingLine += `${cmd}${rollingX(i)},${rollingY(point.rate)} `;
+    segmentStart = i;
+  });
+  const rollingValid = rollingPoints.filter(point => point.rate !== null);
+  if (rollingValid.length > 1 && rollingPoints.findIndex(p => p.rate === null) === -1) {
+    rollingArea = `${rollingLine}L100,100 L0,100 Z`;
+  }
+  const shownIdx = hoverIdx !== null && rollingPoints[hoverIdx] && rollingPoints[hoverIdx].rate !== null
+    ? hoverIdx
+    : rollingPoints.length - 1 - [...rollingPoints].reverse().findIndex(p => p.rate !== null);
+  const shownPoint = rollingValid.length > 0 ? rollingPoints[shownIdx] : null;
+  const rollingTicks = [];
+  if (tab === 'chart') {
+    const weekly = rollingCount <= 31;
+    rollingPoints.forEach((point, i) => {
+      if (weekly ? i % 7 === 0 : (i === 0 || point.date.slice(8) === '01')) {
+        const d = new Date(point.date + 'T00:00:00');
+        rollingTicks.push({
+          left: rollingX(i),
+          label: d.toLocaleDateString('en-US', weekly ? { month: 'short', day: 'numeric' } : { month: 'short' })
+        });
+      }
+    });
+  }
+  const handleChartMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    setHoverIdx(Math.round(frac * (rollingCount - 1)));
+  };
+
+  // Completion by weekday in the selected range (index 0 = Sunday).
+  const weekdayStats = dayLabels.map(() => ({ done: 0, active: 0 }));
+  rangeDays.forEach(day => {
+    if (!day.active) return;
+    const stat = weekdayStats[new Date(day.date + 'T00:00:00').getDay()];
+    stat.active += 1;
+    if (day.completed) stat.done += 1;
+  });
+  const weekdayRates = weekdayStats.map(stat => (stat.active > 0 ? stat.done / stat.active : null));
+  const knownRates = weekdayRates.filter(rate => rate !== null);
+  // Only highlight a best day when the days actually differ.
+  const rateSpread = knownRates.length > 0 && Math.max(...knownRates) > Math.min(...knownRates);
+  const bestRate = rateSpread ? Math.max(...knownRates) : null;
+  const formatWeekdayRate = (rate) => (rate === null ? '-' : `${Math.round(rate * 100)}%`);
+
+  // One plain sentence about the weekday pattern.
+  let weekdayInsight = 'Not enough data in this range yet.';
+  if (knownRates.length > 0) {
+    const missed = weekdayStats.map(stat => stat.active - stat.done);
+    const mostMissed = Math.max(...missed);
+    if (mostMissed === 0) {
+      weekdayInsight = 'You did every day in this range.';
+    } else {
+      const worstIdx = missed.indexOf(mostMissed);
+      weekdayInsight = `You miss ${dayLabels[worstIdx]}s most: ${mostMissed} of the last ${weekdayStats[worstIdx].active}.`;
+      if (rateSpread) {
+        weekdayInsight += ` Best day: ${dayLabels[weekdayRates.indexOf(bestRate)]}.`;
+      }
+    }
+  }
+
+  // Streak timeline: spans exactly the selected range, so it changes with
+  // the date inputs and presets. Each bar is a streak (2+ days) clipped to
+  // the range, positioned in percent of the range.
+  const tlDayCount = rangeDays.length;
+  const tlOffset = (dateStr) => countDaysInclusive(startDate, dateStr) - 1;
+  const timelineBars = tab === 'streaks'
+    ? streakRuns
+        .filter(run => run.end >= startDate && run.start <= endDate)
+        .map(run => {
+          const from = run.start < startDate ? startDate : run.start;
+          const to = run.end > endDate ? endDate : run.end;
+          const shown = tlOffset(to) - tlOffset(from) + 1;
+          return {
+            run,
+            from,
+            to,
+            shown,
+            left: (tlOffset(from) / tlDayCount) * 100,
+            width: (shown / tlDayCount) * 100,
+            isCurrent: run === currentRun
+          };
+        })
+    : [];
+  // Streak cards follow the selected range too: they use the same
+  // clipped streaks as the timeline.
+  const rangeStreaks = timelineBars.map(bar => ({ start: bar.from, end: bar.to, length: bar.shown }));
+  const rangeCurrent = rangeStreaks.length > 0 && rangeStreaks[rangeStreaks.length - 1].end === endDate
+    ? rangeStreaks[rangeStreaks.length - 1]
+    : null;
+  const rangePrevious = (rangeCurrent ? rangeStreaks[rangeStreaks.length - 2] : rangeStreaks[rangeStreaks.length - 1]) || null;
+  const rangeLongest = rangeStreaks.reduce((best, run) => (!best || run.length >= best.length ? run : best), null);
+
+  // Short ranges are labelled weekly ("Nov 3"); longer ones by month.
+  const timelineTicks = [];
+  if (tab === 'streaks') {
+    let day = startDate;
+    for (let i = 0; i < tlDayCount; i++, day = addDays(day, 1)) {
+      const d = new Date(day + 'T00:00:00');
+      const weekly = tlDayCount <= 31;
+      if (weekly ? i % 7 === 0 : (i === 0 || day.slice(8) === '01')) {
+        timelineTicks.push({
+          left: (i / tlDayCount) * 100,
+          label: d.toLocaleDateString('en-US', weekly ? { month: 'short', day: 'numeric' } : { month: 'short' })
+        });
+      }
+    }
+  }
+
   const thisRangeRate = getRateForRange(rangeDays);
-  const rangeLabel = startDate === endDate
-    ? formatDateShort(startDate)
-    : `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`;
+
+  // Tells the reader when the rate covers fewer days than the range.
+  const activeDayCount = rangeDays.filter(d => d.active).length;
+  const daysDone = rangeDays.filter(d => d.completed).length;
+  const skippedBefore = rangeDays.filter(d => habitStartStr && d.date < habitStartStr).length;
+  const skippedAfter = rangeDays.filter(d => archiveStr && d.date > archiveStr).length;
+  let rangeNote = null;
+  if (activeDayCount === 0) {
+    rangeNote = 'This habit was not active in this range.';
+  } else if (activeDayCount < rangeDays.length) {
+    let reason = 'fall outside the time this habit was tracked';
+    if (skippedBefore > 0 && skippedAfter === 0) reason = 'were before this habit was created';
+    if (skippedAfter > 0 && skippedBefore === 0) reason = 'were after it was archived';
+    rangeNote = `Rate counts ${activeDayCount} of ${rangeDays.length} days; the rest ${reason}.`;
+  }
 
   useLayoutEffect(() => {
-    if (trendView !== 'heatmap' || !hmContainerRef.current) return;
+    if (!bodyRef.current) return;
 
     const calculate = () => {
-      const containerWidth = hmContainerRef.current.offsetWidth;
-      const gap = 6;
-
-      if (layoutMode === 'calendar') {
-        const monthLabelWidth = 32;
-        const available = containerWidth - monthLabelWidth - 6;
-        const totalGaps = (7 - 1) * gap;
-        const size = (available - totalGaps) / 7;
-        setCellSize(Math.round(Math.max(18, Math.min(46, size))));
-      } else {
-        const dayLabelWidth = 28;
-        const numWeeks = heatmapWeeks.length || 1;
-        const available = containerWidth - dayLabelWidth - 6;
-        const totalGaps = (numWeeks - 1) * gap;
-        const rawSize = (available - totalGaps) / numWeeks;
-        setCellSize(Math.floor(Math.max(10, Math.min(36, rawSize))));
-      }
+      const containerWidth = bodyRef.current.offsetWidth;
+      const gap = HEATMAP_GAP;
+      const dayLabelWidth = 28;
+      // Same square size for every range: sized so HEATMAP_FIT_WEEKS columns
+      // fit, with room for four month gaps. Longer
+      // ranges scroll sideways instead of shrinking the squares.
+      const available = containerWidth - dayLabelWidth - 2 * gap - 4 - 4 * HEATMAP_MONTH_GAP;
+      const rawSize = (available - (HEATMAP_FIT_WEEKS - 1) * gap) / HEATMAP_FIT_WEEKS;
+      setCellSize(Math.floor(Math.max(14, Math.min(HEATMAP_MAX_CELL, rawSize))));
     };
 
     calculate();
     window.addEventListener('resize', calculate);
     return () => window.removeEventListener('resize', calculate);
-  }, [trendView, layoutMode, heatmapWeeks.length]);
+  }, []);
 
-  const chartWidth = 400;
-  const chartHeight = 100;
-  const chartPadding = 4;
-  const points = trendData.map((item, index) => {
-    const x = trendData.length > 1
-      ? chartPadding + (index / (trendData.length - 1)) * (chartWidth - chartPadding * 2)
-      : chartWidth / 2;
-    const y = chartPadding + (1 - item.percentage / 100) * (chartHeight - chartPadding * 2);
-    return { x, y, ...item };
-  });
-  // Each label sits directly under its own point. When there are too many
-  // points to label without overlap, show every 2nd, 3rd, etc.
-  const labelStep = Math.max(1, Math.ceil(points.length / 14));
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-  const areaPath = points.length > 0
-    ? `${linePath} L ${points[points.length - 1].x} ${chartHeight} L ${points[0].x} ${chartHeight} Z`
-    : '';
-
-  const yAxisTicks = [
-    { value: 100, y: chartPadding },
-    { value: 50, y: chartPadding + 0.5 * (chartHeight - chartPadding * 2) },
-    { value: 0, y: chartHeight - chartPadding }
-  ];
-
-  const handlePointHover = (e, point) => {
-    const svgEl = e.currentTarget.ownerSVGElement;
-    const svgRect = svgEl.getBoundingClientRect();
-    const scaleX = svgRect.width / chartWidth;
-    const scaleY = svgRect.height / chartHeight;
-
-    const rawX = point.x * scaleX;
-    const screenY = point.y * scaleY;
-
-    const plotRect = plotAreaRef.current ? plotAreaRef.current.getBoundingClientRect() : null;
-    const svgOffsetX = plotRect ? svgRect.left - plotRect.left : 0;
-    const absoluteX = svgOffsetX + rawX;
-
-    setHoveredPoint({
-      screenX: absoluteX,
-      screenY,
-      label: point.fullLabel || point.label,
-      percentage: point.percentage
-    });
-  };
-
+  // Open scrolled to the newest week, so a long range never hides today.
   useLayoutEffect(() => {
-    if (!hoveredPoint || !tooltipRef.current || !plotAreaRef.current) return;
-
-    const tooltipEl = tooltipRef.current;
-    const plotRect = plotAreaRef.current.getBoundingClientRect();
-    const popupEl = plotAreaRef.current.closest('.detail-content') || plotAreaRef.current.closest('.habit-detail');
-    const popupRect = popupEl ? popupEl.getBoundingClientRect() : plotRect;
-
-    const tooltipWidth = tooltipEl.offsetWidth;
-    const halfWidth = tooltipWidth / 2;
-
-    const minX = (popupRect.left - plotRect.left) + halfWidth + 4;
-    const maxX = (popupRect.right - plotRect.left) - halfWidth - 4;
-
-    setHoveredPoint(prev => {
-      if (!prev) return prev;
-      const clamped = Math.max(minX, Math.min(maxX, prev.screenX));
-      if (clamped === prev.screenX) return prev;
-      return { ...prev, screenX: clamped };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoveredPoint && hoveredPoint.label, hoveredPoint && hoveredPoint.percentage]);
+    const region = scrollRegionRef.current;
+    if (tab === 'heatmap' && region) region.scrollLeft = region.scrollWidth;
+  }, [tab, heatmapWeeks.length, cellSize, startDate, endDate]);
 
   return (
     <div className="habit-detail">
@@ -451,24 +498,26 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
       </div>
 
       <div className="detail-content">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">🔥</div>
-            <div className="stat-value">{currentStreak}</div>
-            <div className="stat-label">Current</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">🏆</div>
-            <div className="stat-value">{longestStreak}</div>
-            <div className="stat-label">Longest</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">⏱️</div>
-            <div className="stat-value">
-              {daysSinceLastCompleted === null ? 'Never' : daysSinceLastCompleted}
+        {/* Range cards first, then the pickers that change them */}
+        <div className="hd-summary">
+          <div className="comparison-row">
+            <div className="comparison-card">
+              <div className="comparison-value">{formatRate(thisRangeRate)}</div>
+              <div className="comparison-label">Completion Rate</div>
             </div>
-            <div className="stat-label">Days Since</div>
+            <div className="comparison-card">
+              <div className="comparison-value">
+                {activeDayCount > 0 ? `${daysDone}/${activeDayCount}` : 'N/A'}
+              </div>
+              <div className="comparison-label">Days Done</div>
+            </div>
+            <div className="comparison-card">
+              <div className="comparison-value">{formatRate(sinceCreatedRate)}</div>
+              <div className="comparison-label">Since Created</div>
+            </div>
           </div>
+
+          {rangeNote && <p className="hd-range-note">{rangeNote}</p>}
         </div>
 
         {/* Date range + presets, mirroring Overall view */}
@@ -496,191 +545,213 @@ function HabitDetailContent({ habit, onBack, onEdit }) {
           </div>
 
           <div className="preset-buttons">
-            <button
-              className={`preset-btn ${activePreset === 7 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(7)}
-            >
-              7 Days
-            </button>
-            <button
-              className={`preset-btn ${activePreset === 30 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(30)}
-            >
-              30 Days
-            </button>
-            <button
-              className={`preset-btn ${activePreset === 60 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(60)}
-            >
-              60 Days
-            </button>
-            <button
-              className={`preset-btn ${activePreset === 90 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(90)}
-            >
-              90 Days
-            </button>
+            {PRESET_DAYS.map((days) => (
+              <button
+                key={days}
+                className={`preset-btn ${activePreset === days ? 'active' : ''}`}
+                onClick={() => handlePresetClick(days)}
+              >
+                {days / 7} Weeks
+              </button>
+            ))}
+            {habitStartStr && (
+              <button
+                className={`preset-btn ${activePreset === 'created' ? 'active' : ''}`}
+                onClick={handleSinceCreatedClick}
+              >
+                Since created
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="section">
-          {trendView === 'chart' ? (
-            <div className="line-chart-wrapper">
-              <div className="line-chart-plot-area" ref={plotAreaRef}>
-                <div className="line-chart-y-axis">
-                  {yAxisTicks.map((tick) => (
-                    <span key={tick.value} className="line-chart-y-label">{tick.value}%</span>
-                  ))}
-                </div>
-                <svg
-                  className="line-chart-svg"
-                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                  preserveAspectRatio="none"
-                  onMouseLeave={() => setHoveredPoint(null)}
-                >
-                  {yAxisTicks.map((tick) => (
-                    <line
-                      key={tick.value}
-                      x1={0}
-                      y1={tick.y}
-                      x2={chartWidth}
-                      y2={tick.y}
-                      stroke="#EEEEEE"
-                      strokeWidth="1"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ))}
-                  {areaPath && (
-                    <path d={areaPath} fill="url(#lineFadeDetail)" stroke="none" />
-                  )}
-                  <defs>
-                    <linearGradient id="lineFadeDetail" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="black" stopOpacity="0.12" />
-                      <stop offset="100%" stopColor="black" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  {linePath && (
-                    <path d={linePath} fill="none" stroke="black" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                  )}
-                  {points.map((p, i) => (
-                    <circle
-                      key={i}
-                      cx={p.x}
-                      cy={p.y}
-                      r="2.5"
-                      fill="black"
-                      onMouseEnter={(e) => handlePointHover(e, p)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                  ))}
-                </svg>
-                {hoveredPoint && (
-                  <div
-                    ref={tooltipRef}
-                    className="line-chart-tooltip"
-                    style={{
-                      left: `${hoveredPoint.screenX}px`,
-                      top: `${hoveredPoint.screenY}px`
-                    }}
-                  >
-                    <div className="line-chart-tooltip-date">{hoveredPoint.label}</div>
-                    <div className="line-chart-tooltip-value">{hoveredPoint.percentage}%</div>
-                  </div>
-                )}
-              </div>
-              <div className="line-chart-labels">
-                {points.map((p, index) => (
-                  index % labelStep === 0 && (
-                    <span
-                      key={index}
-                      className="line-chart-label"
-                      style={{ left: `${(p.x / chartWidth) * 100}%` }}
-                    >
-                      {p.label}
+        <div className="section hd-view">
+          {/* Every tab body is at least as tall as the heatmap, so the tab
+              buttons below stay put when you switch tabs. */}
+          <div className="hd-tab-body" ref={bodyRef} style={{ minHeight: `${7 * cellSize + 6 * HEATMAP_GAP + 35}px` }}>
+          {tab === 'chart' && (
+            <div className="hd-rc">
+              {shownPoint ? (
+                <>
+                  <div className="hd-rc-readout">
+                    <span className="hd-rc-title">Rolling 7-day rate</span>
+                    <span className="hd-rc-value">
+                      {formatShortDate(shownPoint.date)}: <strong>{shownPoint.rate}%</strong>
                     </span>
-                  )
-                ))}
-              </div>
-            </div>
-          ) : layoutMode === 'calendar' ? (
-            <div className="hm-cal-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
-              <div className="hm-cal-day-header">
-                <div className="hm-cal-month-spacer" />
-                {dayLabels.map((label) => (
-                  <div key={label} className="hm-cal-day-label">{label}</div>
-                ))}
-              </div>
-              <div className="hm-cal-grid">
-                {heatmapWeeks.map((week, weekIdx) => (
-                  <div key={weekIdx} className="hm-cal-week-row">
-                    <div className="hm-cal-month-label">{monthLabels[weekIdx] || ''}</div>
-                    {week.map((day, dayIdx) => (
-                      <div
-                        key={`${weekIdx}-${dayIdx}`}
-                        className={`hm-cell ${getHeatmapCellClass(day)} ${day.date === todayStr ? 'hm-cell-today' : ''}`}
-                        title={getHeatmapTooltip(day)}
-                      />
+                  </div>
+                  <div className="hd-rc-chart">
+                    <div className="hd-rc-yaxis">
+                      <span>100%</span>
+                      <span>50%</span>
+                      <span>0%</span>
+                    </div>
+                    <div
+                      className="hd-rc-plot"
+                      onMouseMove={handleChartMove}
+                      onMouseLeave={() => setHoverIdx(null)}
+                    >
+                      <svg className="hd-rc-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {[0, 50, 100].map(y => (
+                          <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#EEEEEE" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                        ))}
+                        {rollingArea && <path d={rollingArea} fill="black" fillOpacity="0.06" stroke="none" />}
+                        <path d={rollingLine} fill="none" stroke="black" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                      </svg>
+                      {hoverIdx !== null && shownPoint && (
+                        <div
+                          className="hd-rc-marker"
+                          style={{ left: `${rollingX(shownIdx)}%`, top: `${rollingY(shownPoint.rate)}%` }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="hd-rc-xaxis">
+                    {rollingTicks.map((t, i) => (
+                      <span key={i} className="hd-rc-tick" style={{ left: `${t.left}%` }}>{t.label}</span>
                     ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <p className="hd-insight">Not enough data in this range yet.</p>
+              )}
             </div>
-          ) : (
-            <div className="hm-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
-              <div className="hm-day-labels">
-                {dayLabels.map((label) => (
-                  <div key={label} className="hm-day-label">{label}</div>
-                ))}
+          )}
+
+          {tab === 'heatmap' && (
+            <>
+              <div className="hm-container" style={{ '--hm-cell-size': `${cellSize}px` }}>
+                <div className="hm-day-labels">
+                  {dayLabels.map((label) => (
+                    <div key={label} className="hm-day-label">{label}</div>
+                  ))}
+                </div>
+                <div className="hm-scroll-region" ref={scrollRegionRef}>
+                  <div className="hm-scroll-content">
+                    <div className="hm-grid">
+                      {heatmapWeeks.map((week, weekIdx) => {
+                        const firstReal = week.find(d => !d.isPadding);
+                        const startsMonth = weekIdx > 0 && monthLabels[weekIdx] !== null;
+                        return (
+                          <div key={weekIdx} className={`hm-week ${startsMonth ? 'hm-week-month-start' : ''}`}>
+                            <div className="hm-week-column">
+                              {week.map((day, dayIdx) => (
+                                <div
+                                  key={`${weekIdx}-${dayIdx}`}
+                                  className={`hm-cell ${getHeatmapCellClass(day)} ${day.date === todayStr ? 'hm-cell-today' : ''} ${isOutsideRange(day) ? 'hm-cell-out' : ''}`}
+                                  title={getHeatmapTooltip(day)}
+                                />
+                              ))}
+                            </div>
+                            <div className="hm-month-label-cell">{firstReal ? monthLabels[weekIdx] || '' : ''}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="hm-scroll-region">
-                <div className="hm-scroll-content">
-                  <div className="hm-grid">
-                    {heatmapWeeks.map((week, weekIdx) => (
-                      <div key={weekIdx} className="hm-week-column">
-                        {week.map((day, dayIdx) => (
-                          <div
-                            key={`${weekIdx}-${dayIdx}`}
-                            className={`hm-cell ${getHeatmapCellClass(day)} ${day.date === todayStr ? 'hm-cell-today' : ''}`}
-                            title={getHeatmapTooltip(day)}
-                          />
-                        ))}
+            </>
+          )}
+
+          {tab === 'weekdays' && (
+            <div className="hd-weekdays">
+              <div className="hd-wd-bars">
+                {dayLabels.map((label, i) => {
+                  const rate = weekdayRates[i];
+                  const isBest = bestRate !== null && rate === bestRate;
+                  return (
+                    <div
+                      key={label}
+                      className="hd-wd-col"
+                      title={weekdayStats[i].active > 0 ? `${weekdayStats[i].done} of ${weekdayStats[i].active} ${label}s done` : `No ${label}s in this range`}
+                    >
+                      <div className={`hd-wd-pct ${isBest ? 'hd-wd-pct-best' : ''}`}>{formatWeekdayRate(rate)}</div>
+                      <div className="hd-wd-track">
+                        <div
+                          className={`hd-wd-bar ${isBest ? 'hd-wd-bar-best' : ''}`}
+                          style={{ height: `${Math.round((rate || 0) * 100)}%` }}
+                        />
+                      </div>
+                      <div className={`hd-wd-name ${isBest ? 'hd-wd-name-best' : ''}`}>{label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="hd-insight hd-insight-below">{weekdayInsight}</p>
+            </div>
+          )}
+
+          {tab === 'streaks' && (
+            <div className="hd-timeline-wrap">
+              {timelineBars.length === 0 ? (
+                <p className="hd-insight">No streaks of 2 or more days in this range.</p>
+              ) : (
+                <>
+                  <div className="hd-timeline">
+                    {timelineBars.map(({ run, shown, left, width, isCurrent }) => (
+                      <div
+                        key={run.start}
+                        className={`hd-tl-bar ${isCurrent ? 'hd-tl-bar-current' : ''}`}
+                        style={{ left: `${left}%`, width: `${width}%` }}
+                        title={`${formatRun(run)} (${run.length} days)`}
+                      >
+                        {/* Too narrow to hold the number: hover shows it instead */}
+                        {width >= 5 ? shown : ''}
                       </div>
                     ))}
                   </div>
-                  <div className="hm-month-labels">
-                    {monthLabels.map((label, idx) => (
-                      <div key={idx} className="hm-month-label-cell">{label || ''}</div>
+                  <div className="hd-tl-months">
+                    {timelineTicks.map((m, i) => (
+                      <span key={i} className="hd-tl-month" style={{ left: `${m.left}%` }}>{m.label}</span>
                     ))}
                   </div>
+                  <p className="hd-tl-hint">Each bar is a streak of 2 or more days. Black is the current one.</p>
+                </>
+              )}
+
+              <div className="stats-grid hd-streak-cards">
+                <div className="stat-card">
+                  <div className="stat-icon">🔥</div>
+                  <div className="stat-value">{rangeCurrent ? rangeCurrent.length : 0}</div>
+                  <div className="stat-label">Current</div>
+                  <div className="stat-dates">
+                    {rangeCurrent
+                      ? `Since ${formatShortDate(rangeCurrent.start)}`
+                      : lastCompletionRun && lastCompletionRun.end === endDate
+                        ? 'Day 1, keep going'
+                        : rangePrevious
+                          ? `Ended ${formatShortDate(rangePrevious.end)}`
+                          : 'None in range'}
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">⬅️</div>
+                  <div className="stat-value">{rangePrevious ? rangePrevious.length : 0}</div>
+                  <div className="stat-label">Previous</div>
+                  <div className="stat-dates">{rangePrevious ? formatRun(rangePrevious) : 'None in range'}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">🏆</div>
+                  <div className="stat-value">{rangeLongest ? rangeLongest.length : 0}</div>
+                  <div className="stat-label">Longest</div>
+                  <div className="stat-dates">{rangeLongest ? formatRun(rangeLongest) : 'None in range'}</div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="view-toggle">
-            <button
-              className={`view-toggle-btn ${trendView === 'chart' ? 'active' : ''}`}
-              onClick={() => setTrendViewChoice('chart')}
-            >
-              Chart
-            </button>
-            <button
-              className={`view-toggle-btn ${trendView === 'heatmap' ? 'active' : ''}`}
-              onClick={() => setTrendViewChoice('heatmap')}
-            >
-              Heatmap
-            </button>
           </div>
 
-          <div className="comparison-row">
-            <div className="comparison-card">
-              <div className="comparison-value">{formatRate(thisRangeRate)}</div>
-              <div className="comparison-label">{rangeLabel}</div>
-            </div>
-            <div className="comparison-card">
-              <div className="comparison-value">{formatRate(sinceCreatedRate)}</div>
-              <div className="comparison-label">Since Created</div>
-            </div>
+          <div className="view-toggle">
+            {[['chart', 'Chart'], ['heatmap', 'Heatmap'], ['weekdays', 'Weekdays'], ['streaks', 'Streaks']].map(([key, label]) => (
+              <button
+                key={key}
+                className={`view-toggle-btn ${tab === key ? 'active' : ''}`}
+                onClick={() => setTab(key)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 

@@ -34,7 +34,8 @@ export const calculateCurrentStreak = (logs) => {
     currentDate.setDate(currentDate.getDate() - 1);
   }
   
-  return streak;
+  // A streak is 2 or more days in a row.
+  return streak >= 2 ? streak : 0;
 };
 
 // Calculate longest streak
@@ -69,6 +70,25 @@ export const addDays = (dateStr, n) => {
   const date = new Date(dateStr + 'T00:00:00');
   date.setDate(date.getDate() + n);
   return formatDate(date);
+};
+
+// Every run of consecutive completed days, oldest first, as
+// { start, end, length } with 'YYYY-MM-DD' strings. Uses calendar-day
+// steps, so daylight saving changes cannot split a run.
+export const getStreakRuns = (logs) => {
+  const dates = Object.keys(logs).filter(date => logs[date]).sort();
+  const runs = [];
+  let run = null;
+  for (const date of dates) {
+    if (run && addDays(run.end, 1) === date) {
+      run.end = date;
+      run.length++;
+    } else {
+      run = { start: date, end: date, length: 1 };
+      runs.push(run);
+    }
+  }
+  return runs;
 };
 
 // Keeps a start/end pair valid after the user edits one of them.
@@ -113,4 +133,28 @@ export const groupIntoWeeks = (days) => {
     groups.unshift(days.slice(Math.max(0, end - 7), end));
   }
   return groups;
+};
+// Number of calendar days from startStr to endStr, counting both ends.
+// Uses Math.round so the local-midnight difference stays whole across
+// daylight saving changes.
+export const countDaysInclusive = (startStr, endStr) => {
+  const start = new Date(startStr + 'T00:00:00');
+  const end = new Date(endStr + 'T00:00:00');
+  return Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+};
+
+// The preset buttons, in days (2, 4, 8 and 12 whole weeks). The default
+// range is the smallest preset that covers the whole history, so a short
+// history is not stretched across a long range.
+export const PRESET_DAYS = [14, 28, 56, 84];
+
+// Up to 14 days of history opens on 2 weeks, up to 28 on 4 weeks, up to 56
+// on 8 weeks, and anything longer opens on the last 12 weeks.
+// `firstDayStr` is the first day tracked, as a 'YYYY-MM-DD' string, or
+// null when unknown.
+export const getDefaultPresetDays = (firstDayStr) => {
+  if (!firstDayStr) return PRESET_DAYS[0];
+  const history = countDaysInclusive(firstDayStr, getToday());
+  const fit = PRESET_DAYS.find(days => history <= days);
+  return fit || PRESET_DAYS[PRESET_DAYS.length - 1];
 };

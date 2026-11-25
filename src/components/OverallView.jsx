@@ -1,7 +1,20 @@
 import { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
 import { getHabits, getHabitLogs } from '../utils/storage';
-import { formatDate, normalizeRange, toDateString, groupIntoWeeks } from '../utils/dateHelpers';
+import { formatDate, getToday, addDays, getDefaultPresetDays, normalizeRange, toDateString, groupIntoWeeks, PRESET_DAYS } from '../utils/dateHelpers';
 import './OverallView.css';
+
+// Heatmap spacing. Narrow gaps keep the "ghost dots" (Hermann grid
+// illusion) from showing between the squares. Keep HEATMAP_GAP in sync
+// with the gap values in the .ov-hm-* CSS rules.
+const HEATMAP_GAP = 3;
+// The heatmap always shows at least this many days ending on the end date,
+// so its shape stays the same at every preset. Days outside the selected
+// range are faded.
+const HEATMAP_MIN_DAYS = 84;
+// Square size is chosen so this many weeks fit the popup width. A longer
+// custom range keeps the same size and scrolls sideways.
+const HEATMAP_FIT_WEEKS = 14;
+const HEATMAP_MAX_CELL = 36;
 
 // Earlier of: the day the habit was created, or its first logged
 // completion. Returned as a 'YYYY-MM-DD' string so it compares cleanly
@@ -53,28 +66,6 @@ function OverallView({ onBack }) {
 }
 
 function OverallContent({ habits, onBack }) {
-
-  const getDefaultStartDate = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 29);
-    return formatDate(date);
-  };
-
-  const getDefaultEndDate = () => {
-    return formatDate(new Date());
-  };
-
-  const [startDate, setStartDate] = useState(getDefaultStartDate());
-  const [endDate, setEndDate] = useState(getDefaultEndDate());
-  const [activePreset, setActivePreset] = useState(30);
-  const [trendView, setTrendView] = useState('chart'); // 'chart' | 'heatmap'
-  const [cellSize, setCellSize] = useState(20);
-  const [hoveredPoint, setHoveredPoint] = useState(null);
-  const hmContainerRef = useRef(null);
-  const scrollRegionRef = useRef(null);
-  const plotAreaRef = useRef(null);
-  const tooltipRef = useRef(null);
-
   // Read storage ONCE per set of habits (not once per habit per day).
   // Each entry holds that habit's logs plus its start and archive days.
   const habitData = useMemo(() => {
@@ -90,14 +81,32 @@ function OverallContent({ habits, onBack }) {
     return map;
   }, [habits]);
 
+  // Opens on the smallest preset (2, 4, 8 or 12 weeks) that covers the
+  // whole history.
+  const [defaultDays] = useState(() => {
+    const starts = Object.values(habitData).map(info => info.startStr).filter(Boolean).sort();
+    return getDefaultPresetDays(starts[0] || null);
+  });
+
+  const [startDate, setStartDate] = useState(() => addDays(getToday(), -(defaultDays - 1)));
+  const [endDate, setEndDate] = useState(getToday());
+  const [activePreset, setActivePreset] = useState(defaultDays);
+  const [trendViewChoice, setTrendViewChoice] = useState(null); // null | 'chart' | 'heatmap'
+  const [cellSize, setCellSize] = useState(20);
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const hmContainerRef = useRef(null);
+  const scrollRegionRef = useRef(null);
+  const plotAreaRef = useRef(null);
+  const tooltipRef = useRef(null);
+
   const getActiveHabitsOnDate = (dateStr) => {
     return habits.filter(habit => isActiveOnDate(habitData[habit.id], dateStr));
   };
 
-  const getDaysInRange = () => {
+  const getDaysBetween = (startStr, endStr) => {
     const days = [];
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
+    const start = new Date(startStr + 'T00:00:00');
+    const end = new Date(endStr + 'T00:00:00');
 
     let cursor = new Date(start);
     while (cursor <= end) {
@@ -143,8 +152,10 @@ function OverallContent({ habits, onBack }) {
       ? Math.round((totalCompletions / totalPossible) * 100) 
       : 0;
 
-    const avgPerDay = rangeData.length > 0 
-      ? (totalCompletions / rangeData.length).toFixed(1) 
+    // Average over the days that had habits, matching how the rate is counted
+    const trackedDays = rangeData.filter(day => day.totalHabits > 0).length;
+    const avgPerDay = trackedDays > 0
+      ? (totalCompletions / trackedDays).toFixed(1)
       : 0;
 
     return {
@@ -190,7 +201,8 @@ function OverallContent({ habits, onBack }) {
     const totalDays = rangeData.length;
 
     if (totalDays <= 14) {
-      return rangeData.map(day => {
+      // Days before the first habit are left out, not plotted as 0%
+      return rangeData.filter(day => day.totalHabits > 0).map(day => {
         const date = new Date(day.date + 'T00:00:00');
         return {
           label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -203,24 +215,27 @@ function OverallContent({ habits, onBack }) {
       // 7-day points counted back from the end date, so the newest point
       // is always a full week. Only the oldest point can be shorter, and
       // its tooltip says how many days it covers.
-      return groupIntoWeeks(rangeData).map(week => {
-        const totalCompleted = week.reduce((sum, d) => sum + d.completedCount, 0);
-        const totalPossible = week.reduce((sum, d) => sum + d.totalHabits, 0);
-        const percentage = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
-        const firstDate = new Date(week[0].date + 'T00:00:00');
-        const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
-        const shortDate = { month: 'short', day: 'numeric' };
-        const dayNote = week.length < 7 ? ` (${week.length} day${week.length === 1 ? '' : 's'})` : '';
-        return {
-          label: firstDate.toLocaleDateString('en-US', shortDate),
-          fullLabel: `${firstDate.toLocaleDateString('en-US', shortDate)} - ${lastDate.toLocaleDateString('en-US', shortDate)}${dayNote}`,
-          percentage
-        };
-      });
+      return groupIntoWeeks(rangeData)
+        .map(week => week.filter(d => d.totalHabits > 0))
+        .filter(week => week.length > 0)
+        .map(week => {
+          const totalCompleted = week.reduce((sum, d) => sum + d.completedCount, 0);
+          const totalPossible = week.reduce((sum, d) => sum + d.totalHabits, 0);
+          const percentage = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+          const firstDate = new Date(week[0].date + 'T00:00:00');
+          const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
+          const shortDate = { month: 'short', day: 'numeric' };
+          const dayNote = week.length < 7 ? ` (${week.length} day${week.length === 1 ? '' : 's'})` : '';
+          return {
+            label: firstDate.toLocaleDateString('en-US', shortDate),
+            fullLabel: `${firstDate.toLocaleDateString('en-US', shortDate)} - ${lastDate.toLocaleDateString('en-US', shortDate)}${dayNote}`,
+            percentage
+          };
+        });
     } else {
       const monthGroups = {};
       
-      rangeData.forEach(day => {
+      rangeData.filter(day => day.totalHabits > 0).forEach(day => {
         const date = new Date(day.date + 'T00:00:00');
         const key = `${date.getFullYear()}-${date.getMonth()}`;
         if (!monthGroups[key]) {
@@ -277,7 +292,7 @@ function OverallContent({ habits, onBack }) {
 
   const getHeatmapColorClass = (day) => {
     if (day.isPadding) return 'ov-hm-cell-padding';
-    if (day.totalHabits === 0) return 'ov-hm-cell-level-0';
+    if (day.totalHabits === 0) return 'ov-hm-cell-padding';
     if (day.percentage === 0) return 'ov-hm-cell-level-0';
     if (day.percentage < 25) return 'ov-hm-cell-level-1';
     if (day.percentage < 50) return 'ov-hm-cell-level-2';
@@ -285,6 +300,8 @@ function OverallContent({ habits, onBack }) {
     if (day.percentage < 100) return 'ov-hm-cell-level-4';
     return 'ov-hm-cell-level-5';
   };
+
+  const isOutsideRange = (day) => !day.isPadding && (day.date < startDate || day.date > endDate);
 
   const getHeatmapTooltip = (day) => {
     if (day.isPadding) return '';
@@ -335,6 +352,17 @@ function OverallContent({ habits, onBack }) {
     return visible;
   };
 
+  // Since created: from the earliest habit's first day through today.
+  const earliestStart = Object.values(habitData).map(info => info.startStr).filter(Boolean).sort()[0] || null;
+
+  const handleSinceCreatedClick = () => {
+    if (!earliestStart) return;
+    const range = normalizeRange(earliestStart, getToday(), 'start');
+    setStartDate(range.start);
+    setEndDate(range.end);
+    setActivePreset('created');
+  };
+
   const handlePresetClick = (days) => {
     const end = new Date();
     const start = new Date();
@@ -363,10 +391,21 @@ function OverallContent({ habits, onBack }) {
     setActivePreset(null);
   };
 
-  const rangeData = getDaysInRange();
-  const heatmapWeeks = trendView === 'heatmap' ? getHeatmapGrid(rangeData) : [];
+  const rangeData = getDaysBetween(startDate, endDate);
+  const trendData = getTrendData(rangeData);
+  // With fewer than 3 points a line chart is a dot or a single segment,
+  // so a heatmap is the default there until the person picks a view.
+  const trendView = trendViewChoice || (trendData.length < 3 ? 'heatmap' : 'chart');
+  // The heatmap covers at least HEATMAP_MIN_DAYS ending on the end date;
+  // days outside the selected range are drawn faded.
+  const heatmapDays = trendView === 'heatmap'
+    ? getDaysBetween(
+        rangeData.length >= HEATMAP_MIN_DAYS ? startDate : addDays(endDate, -(HEATMAP_MIN_DAYS - 1)),
+        endDate
+      )
+    : [];
+  const heatmapWeeks = getHeatmapGrid(heatmapDays);
   const monthLabelCandidates = trendView === 'heatmap' ? getMonthLabelCandidates(heatmapWeeks) : [];
-  const layoutMode = rangeData.length <= 30 ? 'calendar' : 'github';
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const todayStr = formatDate(new Date());
 
@@ -379,32 +418,35 @@ function OverallContent({ habits, onBack }) {
 
     const calculate = () => {
       const containerWidth = hmContainerRef.current.offsetWidth;
-      const gap = 6;
-
-      if (layoutMode === 'calendar') {
-        const monthLabelWidth = 32;
-        const available = containerWidth - monthLabelWidth - 6;
-        const totalGaps = (7 - 1) * gap;
-        const size = (available - totalGaps) / 7;
-        setCellSize(Math.round(Math.max(18, Math.min(46, size))));
-      } else {
-        const dayLabelWidth = 28;
-        const numWeeks = heatmapWeeks.length || 1;
-        const available = containerWidth - dayLabelWidth - 6;
-        const totalGaps = (numWeeks - 1) * gap;
-        const rawSize = (available - totalGaps) / numWeeks;
-        setCellSize(Math.floor(Math.max(10, Math.min(36, rawSize))));
-      }
+      const gap = HEATMAP_GAP;
+      const dayLabelWidth = 28;
+      // Same square size for every range: sized so HEATMAP_FIT_WEEKS columns
+      // fit. Longer ranges scroll sideways instead of shrinking the squares.
+      const available = containerWidth - dayLabelWidth - gap - 4;
+      const rawSize = (available - (HEATMAP_FIT_WEEKS - 1) * gap) / HEATMAP_FIT_WEEKS;
+      setCellSize(Math.floor(Math.max(14, Math.min(HEATMAP_MAX_CELL, rawSize))));
     };
 
     calculate();
     window.addEventListener('resize', calculate);
     return () => window.removeEventListener('resize', calculate);
-  }, [trendView, layoutMode, heatmapWeeks.length]);
+  }, [trendView]);
+
+  // Open scrolled to the newest week, so a long range never hides today.
+  useLayoutEffect(() => {
+    const region = scrollRegionRef.current;
+    if (trendView === 'heatmap' && region) region.scrollLeft = region.scrollWidth;
+  }, [trendView, heatmapWeeks.length, cellSize, startDate, endDate]);
 
   const stats = calculateStats(rangeData);
+  const trackedDayCount = rangeData.filter(day => day.totalHabits > 0).length;
+  let rangeNote = null;
+  if (trackedDayCount === 0) {
+    rangeNote = 'No habits were tracked in this range.';
+  } else if (trackedDayCount < rangeData.length) {
+    rangeNote = `Rates count the ${trackedDayCount} of ${rangeData.length} days in this range that had habits.`;
+  }
   const habitStats = getHabitStats(rangeData);
-  const trendData = getTrendData(rangeData);
 
   const chartWidth = 400;
   const chartHeight = 100;
@@ -517,35 +559,46 @@ function OverallContent({ habits, onBack }) {
             </div>
           </div>
 
-          <div className="preset-buttons">
-            <button
-              className={`preset-btn ${activePreset === 7 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(7)}
-            >
-              7 Days
-            </button>
-            <button
-              className={`preset-btn ${activePreset === 30 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(30)}
-            >
-              30 Days
-            </button>
-            <button
-              className={`preset-btn ${activePreset === 60 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(60)}
-            >
-              60 Days
-            </button>
-            <button
-              className={`preset-btn ${activePreset === 90 ? 'active' : ''}`}
-              onClick={() => handlePresetClick(90)}
-            >
-              90 Days
-            </button>
+          <div className="preset-buttons" style={{ flexWrap: 'wrap' }}>
+            {PRESET_DAYS.map((days) => (
+              <button
+                key={days}
+                className={`preset-btn ${activePreset === days ? 'active' : ''}`}
+                onClick={() => handlePresetClick(days)}
+              >
+                {days / 7} Weeks
+              </button>
+            ))}
+            {earliestStart && (
+              <button
+                className={`preset-btn ${activePreset === 'created' ? 'active' : ''}`}
+                onClick={handleSinceCreatedClick}
+              >
+                Since created
+              </button>
+            )}
           </div>
         </div>
 
         <div className="section">
+          <div className="stats-overview">
+            <div className="stat-card-small">
+              <div className="stat-value-small">{stats.overallRate}%</div>
+              <div className="stat-label-small">Completion Rate</div>
+            </div>
+            <div className="stat-card-small">
+              <div className="stat-value-small">{stats.perfectDays}</div>
+              <div className="stat-label-small">Perfect Days</div>
+            </div>
+            <div className="stat-card-small">
+              <div className="stat-value-small">{stats.avgPerDay}</div>
+              <div className="stat-label-small">Avg per Day</div>
+            </div>
+          </div>
+
+          {/* Always rendered so the space is reserved and nothing below shifts */}
+          <p className="ov-range-note">{rangeNote || '\u00A0'}</p>
+
           {trendView === 'chart' ? (
             <div className="line-chart-wrapper">
               <div className="line-chart-plot-area" ref={plotAreaRef}>
@@ -624,29 +677,6 @@ function OverallContent({ habits, onBack }) {
                 ))}
               </div>
             </div>
-          ) : layoutMode === 'calendar' ? (
-            <div className="ov-hm-cal-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
-              <div className="ov-hm-cal-day-header">
-                <div className="ov-hm-cal-month-spacer" />
-                {dayLabels.map((label) => (
-                  <div key={label} className="ov-hm-cal-day-label">{label}</div>
-                ))}
-              </div>
-              <div className="ov-hm-cal-grid">
-                {heatmapWeeks.map((week, weekIdx) => (
-                  <div key={weekIdx} className="ov-hm-cal-week-row">
-                    <div className="ov-hm-cal-month-label">{monthLabels[weekIdx] || ''}</div>
-                    {week.map((day, dayIdx) => (
-                      <div
-                        key={`${weekIdx}-${dayIdx}`}
-                        className={`ov-hm-cell ${getHeatmapColorClass(day)} ${day.date === todayStr ? 'ov-hm-cell-today' : ''}`}
-                        title={getHeatmapTooltip(day)}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
           ) : (
             <div className="ov-hm-container" ref={hmContainerRef} style={{ '--hm-cell-size': `${cellSize}px` }}>
               <div className="ov-hm-day-labels">
@@ -662,7 +692,7 @@ function OverallContent({ habits, onBack }) {
                         {week.map((day, dayIdx) => (
                           <div
                             key={`${weekIdx}-${dayIdx}`}
-                            className={`ov-hm-cell ${getHeatmapColorClass(day)} ${day.date === todayStr ? 'ov-hm-cell-today' : ''}`}
+                            className={`ov-hm-cell ${getHeatmapColorClass(day)} ${day.date === todayStr ? 'ov-hm-cell-today' : ''} ${isOutsideRange(day) ? 'ov-hm-cell-out' : ''}`}
                             title={getHeatmapTooltip(day)}
                           />
                         ))}
@@ -682,31 +712,16 @@ function OverallContent({ habits, onBack }) {
           <div className="view-toggle">
             <button
               className={`view-toggle-btn ${trendView === 'chart' ? 'active' : ''}`}
-              onClick={() => setTrendView('chart')}
+              onClick={() => setTrendViewChoice('chart')}
             >
               Chart
             </button>
             <button
               className={`view-toggle-btn ${trendView === 'heatmap' ? 'active' : ''}`}
-              onClick={() => setTrendView('heatmap')}
+              onClick={() => setTrendViewChoice('heatmap')}
             >
               Heatmap
             </button>
-          </div>
-
-          <div className="stats-overview">
-            <div className="stat-card-small">
-              <div className="stat-value-small">{stats.overallRate}%</div>
-              <div className="stat-label-small">Completion Rate</div>
-            </div>
-            <div className="stat-card-small">
-              <div className="stat-value-small">{stats.perfectDays}</div>
-              <div className="stat-label-small">Perfect Days</div>
-            </div>
-            <div className="stat-card-small">
-              <div className="stat-value-small">{stats.avgPerDay}</div>
-              <div className="stat-label-small">Avg per Day</div>
-            </div>
           </div>
         </div>
 

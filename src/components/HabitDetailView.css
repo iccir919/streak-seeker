@@ -62,6 +62,7 @@
   padding: 16px;
   max-height: 480px;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 /* Stats Grid - 3 cards */
@@ -95,6 +96,23 @@
   font-size: 10px;
   color: #666666;
   font-weight: 500;
+}
+
+/* Start / end dates of a streak, under its label */
+.stat-dates {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #888888;
+}
+
+.detail-section-title {
+  margin: 4px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #888888;
 }
 
 /* Date range + presets, mirrors Overall view */
@@ -196,84 +214,7 @@
   margin-bottom: 12px;
 }
 
-/* Line chart */
-.line-chart-wrapper {
-  margin-bottom: 16px;
-}
-
-.line-chart-plot-area {
-  display: flex;
-  gap: 6px;
-  position: relative;
-}
-
-.line-chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 28px;
-  flex-shrink: 0;
-  height: 110px;
-  padding: 2px 0;
-}
-
-.line-chart-y-label {
-  font-size: 9px;
-  font-weight: 500;
-  color: #999999;
-  text-align: right;
-}
-
-.line-chart-svg {
-  flex: 1;
-  min-width: 0;
-  height: 110px;
-  display: block;
-  overflow: visible;
-}
-
-.line-chart-tooltip {
-  position: absolute;
-  transform: translate(-50%, -130%);
-  background: black;
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.line-chart-tooltip-date {
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.line-chart-tooltip-value {
-  font-weight: 700;
-  font-size: 13px;
-}
-
-/* Labels are positioned by percentage so each one sits under its point */
-.line-chart-labels {
-  position: relative;
-  height: 12px;
-  margin-top: 6px;
-  margin-left: 34px;
-}
-
-.line-chart-label {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  font-size: 8px;
-  font-weight: 500;
-  color: #999999;
-  white-space: nowrap;
-}
-
-/* View toggle (Chart / Heatmap) */
+/* Tabs under the range cards (Heatmap / Weekdays / Streaks) */
 .view-toggle {
   display: flex;
   gap: 6px;
@@ -304,60 +245,11 @@
   border-color: black;
 }
 
-/* Calendar-style heatmap (≤30 days): days as columns, weeks as rows */
-.hm-cal-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-  width: 100%;
-}
-
-.hm-cal-day-header {
-  display: flex;
-  gap: 6px;
-}
-
-.hm-cal-month-spacer {
-  width: 32px;
-  flex-shrink: 0;
-}
-
-.hm-cal-day-label {
-  width: var(--hm-cell-size);
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 600;
-  color: #666666;
-  text-align: center;
-}
-
-.hm-cal-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hm-cal-week-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.hm-cal-month-label {
-  width: 32px;
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 600;
-  color: #666666;
-}
-
-/* GitHub-style heatmap (>30 days). Day labels stay fixed on the
-   left; grid + month labels are stacked together inside ONE scrolling
-   element so they always move in lockstep. */
+/* Heatmap: weeks as columns, newest on the right. Always the same
+   square size; a long custom range scrolls sideways. */
 .hm-container {
   display: flex;
-  gap: 6px;
+  gap: 3px;
   margin-bottom: 16px;
   width: 100%;
   position: relative;
@@ -367,7 +259,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 3px;
   width: 28px;
   flex-shrink: 0;
   padding-top: 3px;
@@ -394,29 +286,37 @@
 .hm-scroll-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   width: max-content;
 }
 
 .hm-grid {
   display: flex;
-  gap: 6px;
+  gap: 3px;
 }
 
 .hm-week-column {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   flex-shrink: 0;
 }
 
-.hm-month-labels {
+.hm-week {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+/* A little extra room where a new month starts */
+.hm-week-month-start {
+  margin-left: 7px;
 }
 
 .hm-month-label-cell {
   width: var(--hm-cell-size);
+  height: 11px;
   flex-shrink: 0;
   font-size: 9px;
   font-weight: 600;
@@ -456,7 +356,17 @@
   border: 1px solid #E5E5E5;
 }
 
-.hm-cell-completed {
+.hm-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--hm-cell-size) * 0.6);
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* Completed day */
+.hm-cell-streak {
   background: black;
   border: 1px solid black;
 }
@@ -465,32 +375,46 @@
   box-shadow: 0 0 0 2px #4A90D9;
 }
 
+/* Days outside the selected range stay visible but faded */
+.hm-cell-out {
+  opacity: 0.22;
+}
+
 /* Comparison boxes - equal weight */
 .comparison-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
 .comparison-card {
   border: 1px solid #E5E5E5;
   border-radius: 8px;
-  padding: 16px 12px;
+  padding: 8px 6px;
   text-align: center;
   background: white;
 }
 
 .comparison-value {
-  font-size: 26px;
+  font-size: 14px;
   font-weight: 700;
   color: black;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .comparison-label {
   font-size: 11px;
   color: #666666;
   font-weight: 500;
+}
+
+/* Note under the cards; only rendered for partial ranges */
+.hd-range-note {
+  margin: 8px 0 12px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 14px;
+  color: #888888;
 }
 
 /* Footer info */
@@ -543,4 +467,288 @@
   background: #F5F5F5;
   border-radius: 3px;
   margin-left: 8px;
+}
+
+/* One plain-language line above Weekdays and Streaks */
+.hd-insight {
+  font-size: 12px;
+  color: #444444;
+  text-align: center;
+  margin: 4px 0 14px;
+}
+
+/* Weekdays tab */
+.hd-insight-below {
+  margin: 14px 0 0;
+}
+
+.hd-weekdays {
+  margin-bottom: 16px;
+}
+
+.hd-wd-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.hd-wd-col {
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.hd-wd-pct {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.hd-wd-pct-best {
+  color: black;
+}
+
+.hd-wd-track {
+  width: 22px;
+  flex: 1;
+  min-height: 130px;
+  background: #EEEEEE;
+  border-radius: 3px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.hd-wd-bar {
+  width: 100%;
+  background: #6B6B6B;
+}
+
+.hd-wd-bar-best {
+  background: black;
+}
+
+.hd-wd-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.hd-wd-name-best {
+  color: black;
+}
+
+/* Streaks tab: bars placed by percent along the window */
+.hd-timeline-wrap {
+  margin-bottom: 16px;
+}
+
+.hd-timeline {
+  position: relative;
+  flex: 1;
+  min-height: 64px;
+  background: #F5F5F5;
+  border-radius: 4px;
+}
+
+.hd-tl-bar {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  background: #6B6B6B;
+  color: white;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 2px;
+  cursor: default;
+}
+
+.hd-tl-bar-current {
+  background: black;
+}
+
+.hd-tl-months {
+  position: relative;
+  height: 14px;
+  margin-top: 4px;
+}
+
+.hd-tl-month {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+}
+
+.hd-tl-hint {
+  font-size: 10px;
+  color: #888888;
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+/* Tighter spacing on this page (scoped so Overall's shared classes win elsewhere) */
+.habit-detail .hd-summary {
+  margin-bottom: 10px;
+}
+
+.habit-detail .hd-summary .hd-range-note {
+  margin: 6px 0 0;
+  min-height: 0;
+}
+
+/* Compact streak cards: icon beside the number */
+.hd-streak-cards {
+  margin: 12px 0 0;
+  gap: 6px;
+}
+
+.hd-streak-cards .stat-card {
+  padding: 6px 4px;
+}
+
+.hd-streak-cards .stat-icon {
+  font-size: 13px;
+  margin: 0;
+  display: inline;
+}
+
+.hd-streak-cards .stat-value {
+  display: inline;
+  font-size: 15px;
+  margin-left: 4px;
+}
+
+.hd-streak-cards .stat-label {
+  font-size: 10px;
+}
+
+.habit-detail .comparison-row {
+  gap: 6px;
+}
+
+.habit-detail .preset-buttons {
+  margin-bottom: 14px;
+}
+
+.habit-detail .section {
+  margin-bottom: 14px;
+}
+
+.habit-detail .info-section {
+  margin-bottom: 0;
+}
+
+.habit-detail .preset-buttons {
+  flex-wrap: wrap;
+}
+
+/* Tab bodies fill the reserved height, so Weekdays and Streaks stretch
+   down to the tab buttons instead of leaving a gap. */
+.hd-tab-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.hd-weekdays,
+.hd-timeline-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.hd-wd-bars {
+  flex: 1;
+}
+
+/* Chart tab: rolling completion rate */
+.hd-rc {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.hd-rc-readout {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 11px;
+  color: #666666;
+  margin-bottom: 8px;
+  min-height: 16px;
+}
+
+.hd-rc-title {
+  font-weight: 600;
+}
+
+.hd-rc-value strong {
+  color: black;
+  font-size: 13px;
+}
+
+.hd-rc-chart {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-height: 120px;
+}
+
+.hd-rc-yaxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  font-size: 9px;
+  color: #999999;
+  text-align: right;
+  line-height: 1;
+}
+
+.hd-rc-plot {
+  position: relative;
+  flex: 1;
+  cursor: crosshair;
+}
+
+.hd-rc-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hd-rc-marker {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: black;
+  border: 2px solid white;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.hd-rc-xaxis {
+  position: relative;
+  height: 14px;
+  margin: 4px 0 0 36px;
+}
+
+.hd-rc-tick {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666666;
+  white-space: nowrap;
 }
