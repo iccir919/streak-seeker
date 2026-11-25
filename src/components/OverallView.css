@@ -36,6 +36,7 @@
   padding: 20px;
   max-height: 450px;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 /* Explicit column stack for Range row + Presets row, so they can
@@ -249,58 +250,11 @@
   border-color: black;
 }
 
-/* Calendar-style heatmap (≤30 days) */
-.ov-hm-cal-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-  width: 100%;
-}
-
-.ov-hm-cal-day-header {
-  display: flex;
-  gap: 6px;
-}
-
-.ov-hm-cal-month-spacer {
-  width: 32px;
-  flex-shrink: 0;
-}
-
-.ov-hm-cal-day-label {
-  width: var(--hm-cell-size);
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 600;
-  color: #666666;
-  text-align: center;
-}
-
-.ov-hm-cal-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ov-hm-cal-week-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ov-hm-cal-month-label {
-  width: 32px;
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 600;
-  color: #666666;
-}
-
-/* GitHub-style heatmap (>30 days) */
+/* Heatmap: weeks as columns, newest on the right. Always the same
+   square size; a long custom range scrolls sideways. */
 .ov-hm-container {
   display: flex;
-  gap: 6px;
+  gap: 3px;
   margin-bottom: 16px;
   width: 100%;
   position: relative;
@@ -310,7 +264,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 3px;
   width: 28px;
   flex-shrink: 0;
   padding-top: 3px;
@@ -337,25 +291,25 @@
 .ov-hm-scroll-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   width: max-content;
 }
 
 .ov-hm-grid {
   display: flex;
-  gap: 6px;
+  gap: 3px;
 }
 
 .ov-hm-week-column {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   flex-shrink: 0;
 }
 
 .ov-hm-month-labels {
   display: flex;
-  gap: 6px;
+  gap: 3px;
 }
 
 .ov-hm-month-label-cell {
@@ -428,7 +382,13 @@
   box-shadow: 0 0 0 2px #4A90D9;
 }
 
-/* Stats Overview - 3 cards, no icons */
+/* Days outside the selected range stay visible but faded */
+.ov-hm-cell-out {
+  opacity: 0.22;
+}
+
+/* Stats Overview - 3 cards, no icons. They sit above the graph so the
+   row stays put when the preset changes. */
 .stats-overview {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -531,6 +491,15 @@
   font-weight: 600;
   min-width: 40px;
   text-align: right;
+}
+
+.ov-range-note {
+  margin: 8px 0 12px;
+  min-height: 14px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: #888888;
 }
 
 .no-data-message {
