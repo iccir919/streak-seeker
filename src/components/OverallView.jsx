@@ -622,8 +622,7 @@ function OverallContent({ habits, onBack, onHabitClick }) {
             </div>
           </div>
 
-          {/* Always rendered so the space is reserved and nothing below shifts */}
-          <p className="ov-range-note">{rangeNote || '\u00A0'}</p>
+          {rangeNote && <p className="ov-range-note">{rangeNote}</p>}
 
           <div className="view-toggle">
             <button
