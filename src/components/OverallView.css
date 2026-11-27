@@ -635,3 +635,17 @@
   text-align: center;
   margin: 14px 0 0;
 }
+
+/* The one dot that follows the mouse along the chart line */
+.ov-chart-marker {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: black;
+  border: 2px solid white;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1;
+}

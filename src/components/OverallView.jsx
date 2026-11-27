@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
 import { getHabits, getHabitLogs } from '../utils/storage';
-import { formatDate, getToday, addDays, getDefaultPresetDays, normalizeRange, toDateString, groupIntoWeeks, PRESET_DAYS } from '../utils/dateHelpers';
+import { formatDate, getToday, addDays, getDefaultPresetDays, normalizeRange, toDateString, PRESET_DAYS } from '../utils/dateHelpers';
 import './OverallView.css';
 
 // Heatmap spacing. Narrow gaps keep the "ghost dots" (Hermann grid
@@ -197,68 +197,6 @@ function OverallContent({ habits, onBack, onHabitClick }) {
     .sort((a, b) => b.rate - a.rate);
   };
 
-  const getTrendData = (rangeData) => {
-    const totalDays = rangeData.length;
-
-    if (totalDays <= 14) {
-      // Days before the first habit are left out, not plotted as 0%
-      return rangeData.filter(day => day.totalHabits > 0).map(day => {
-        const date = new Date(day.date + 'T00:00:00');
-        return {
-          label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          // Tooltip also names the weekday (the axis label stays short)
-          fullLabel: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-          percentage: day.percentage
-        };
-      });
-    } else if (totalDays < 180) {
-      // 7-day points counted back from the end date, so the newest point
-      // is always a full week. Only the oldest point can be shorter, and
-      // its tooltip says how many days it covers.
-      return groupIntoWeeks(rangeData)
-        .map(week => week.filter(d => d.totalHabits > 0))
-        .filter(week => week.length > 0)
-        .map(week => {
-          const totalCompleted = week.reduce((sum, d) => sum + d.completedCount, 0);
-          const totalPossible = week.reduce((sum, d) => sum + d.totalHabits, 0);
-          const percentage = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
-          const firstDate = new Date(week[0].date + 'T00:00:00');
-          const lastDate = new Date(week[week.length - 1].date + 'T00:00:00');
-          const shortDate = { month: 'short', day: 'numeric' };
-          const dayNote = week.length < 7 ? ` (${week.length} day${week.length === 1 ? '' : 's'})` : '';
-          return {
-            label: firstDate.toLocaleDateString('en-US', shortDate),
-            fullLabel: `${firstDate.toLocaleDateString('en-US', shortDate)} - ${lastDate.toLocaleDateString('en-US', shortDate)}${dayNote}`,
-            percentage
-          };
-        });
-    } else {
-      const monthGroups = {};
-      
-      rangeData.filter(day => day.totalHabits > 0).forEach(day => {
-        const date = new Date(day.date + 'T00:00:00');
-        const key = `${date.getFullYear()}-${date.getMonth()}`;
-        if (!monthGroups[key]) {
-          monthGroups[key] = { 
-            label: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), 
-            totalCompleted: 0, 
-            totalPossible: 0 
-          };
-        }
-        monthGroups[key].totalCompleted += day.completedCount;
-        monthGroups[key].totalPossible += day.totalHabits;
-      });
-
-      return Object.values(monthGroups).map(group => ({
-        label: group.label,
-        fullLabel: group.label,
-        percentage: group.totalPossible > 0 
-          ? Math.round((group.totalCompleted / group.totalPossible) * 100) 
-          : 0
-      }));
-    }
-  };
-
   const getHeatmapGrid = (rangeData) => {
     if (rangeData.length === 0) return [];
 
@@ -403,7 +341,33 @@ function OverallContent({ habits, onBack, onHabitClick }) {
   };
 
   const rangeData = getDaysBetween(startDate, endDate);
-  const trendData = getTrendData(rangeData);
+  // Rolling rate: for each day in the range, the share of all habit-days in
+  // the last ROLLING_DAYS days that were done. Days before the range start
+  // count too, so the line starts at its real level. Long ranges use a
+  // 30-day window so the line stays readable. At the very start of your
+  // history the window is shorter, and the tooltip says how many days it
+  // covers.
+  const rollingDays = rangeData.length >= 180 ? 30 : 7;
+  const trendData = (() => {
+    const source = getDaysBetween(addDays(startDate, -(rollingDays - 1)), endDate);
+    const items = [];
+    rangeData.forEach((day, k) => {
+      if (day.totalHabits === 0) return;
+      const window = source.slice(k, k + rollingDays);
+      const done = window.reduce((sum, d) => sum + d.completedCount, 0);
+      const possible = window.reduce((sum, d) => sum + d.totalHabits, 0);
+      if (possible === 0) return;
+      const trackedDays = window.filter(d => d.totalHabits > 0).length;
+      const date = new Date(day.date + 'T00:00:00');
+      const shortDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      items.push({
+        label: shortDate,
+        fullLabel: `${shortDate} (last ${trackedDays} day${trackedDays === 1 ? '' : 's'})`,
+        percentage: Math.round((done / possible) * 100)
+      });
+    });
+    return items;
+  })();
   // With fewer than 3 points a line chart is a dot or a single segment,
   // so a heatmap is the default there until the person picks a view.
   const trendView = trendViewChoice || (trendData.length < 3 ? 'heatmap' : 'chart');
@@ -525,12 +489,28 @@ function OverallContent({ habits, onBack, onHabitClick }) {
     const svgOffsetX = plotRect ? svgRect.left - plotRect.left : 0;
     const absoluteX = svgOffsetX + rawX;
 
-    setHoveredPoint({
-      screenX: absoluteX,
-      screenY,
-      label: point.fullLabel || point.label,
-      percentage: point.percentage
-    });
+    const label = point.fullLabel || point.label;
+
+    // Moving the mouse within the same point must not reset the position,
+    // or the edge-clamping below would be undone on every mouse move.
+    setHoveredPoint(prev => (
+      prev && prev.label === label && prev.percentage === point.percentage
+        ? prev
+        : { screenX: absoluteX, markerX: absoluteX, screenY, label, percentage: point.percentage }
+    ));
+  };
+
+  // Rolling mode has too many points to hover one by one, so a transparent
+  // layer finds the nearest point from the mouse position.
+  const handleRollingMove = (e) => {
+    if (points.length === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * chartWidth;
+    const usable = chartWidth - chartPadding * 2;
+    const idx = points.length > 1
+      ? Math.round(((svgX - chartPadding) / usable) * (points.length - 1))
+      : 0;
+    handlePointHover(e, points[Math.max(0, Math.min(points.length - 1, idx))]);
   };
 
   // FIX: clamps the tooltip using its ACTUAL rendered width (measured
@@ -722,18 +702,22 @@ function OverallContent({ habits, onBack, onHabitClick }) {
                   {linePath && (
                     <path d={linePath} fill="none" stroke="black" strokeWidth="2" vectorEffect="non-scaling-stroke" />
                   )}
-                  {points.map((p, i) => (
-                    <circle
-                      key={i}
-                      cx={p.x}
-                      cy={p.y}
-                      r="2.5"
-                      fill="black"
-                      onMouseEnter={(e) => handlePointHover(e, p)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                  ))}
+                  <rect
+                    x={0}
+                    y={0}
+                    width={chartWidth}
+                    height={chartHeight}
+                    fill="transparent"
+                    onMouseMove={handleRollingMove}
+                    style={{ cursor: 'crosshair' }}
+                  />
                 </svg>
+                {hoveredPoint && (
+                  <div
+                    className="ov-chart-marker"
+                    style={{ left: `${hoveredPoint.markerX}px`, top: `${hoveredPoint.screenY}px` }}
+                  />
+                )}
                 {hoveredPoint && (
                   <div
                     ref={tooltipRef}
