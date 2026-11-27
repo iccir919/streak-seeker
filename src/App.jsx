@@ -4,6 +4,7 @@ import ArchivedHabitList from './components/ArchivedHabitList';
 import HabitModal from './components/HabitModal';
 import HabitDetailView from './components/HabitDetailView';
 import OverallView from './components/OverallView';
+import { downloadJson, downloadCsv } from './utils/exportData';
 import { 
   getHabits, 
   getHabitLogs,
@@ -232,6 +233,16 @@ function App() {
                 onUnarchive={handleUnarchiveHabit}
                 onDelete={handleDeleteHabit}
               />
+
+              <div className="data-export">
+                <span className="data-export-label">Export your data</span>
+                <button className="data-export-btn" onClick={downloadJson} title="Full backup of your habits and history">
+                  JSON
+                </button>
+                <button className="data-export-btn" onClick={downloadCsv} title="One row per habit per day, for spreadsheets">
+                  CSV
+                </button>
+              </div>
             </>
           )}
         </div>

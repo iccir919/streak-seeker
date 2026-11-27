@@ -294,11 +294,22 @@ function OverallContent({ habits, onBack, onHabitClick }) {
     if (day.isPadding) return 'ov-hm-cell-padding';
     if (day.totalHabits === 0) return 'ov-hm-cell-padding';
     if (day.percentage === 0) return 'ov-hm-cell-level-0';
-    if (day.percentage < 25) return 'ov-hm-cell-level-1';
-    if (day.percentage < 50) return 'ov-hm-cell-level-2';
-    if (day.percentage < 75) return 'ov-hm-cell-level-3';
-    if (day.percentage < 100) return 'ov-hm-cell-level-4';
-    return 'ov-hm-cell-level-5';
+    if (day.percentage >= 100) return 'ov-hm-cell-level-5';
+    // Anything in between gets its own shade from getHeatmapColorStyle
+    return 'ov-hm-cell-scaled';
+  };
+
+  // A continuous grey for partial days: 1% is a light grey and 99% is
+  // almost black, so 75% and 89% look different. 0% and 100% keep their own
+  // classes (pale and pure black).
+  const getHeatmapColorStyle = (day) => {
+    if (day.isPadding || day.totalHabits === 0) return undefined;
+    if (day.percentage <= 0 || day.percentage >= 100) return undefined;
+    const light = 215;
+    const dark = 40;
+    const shade = Math.round(light - (day.percentage / 100) * (light - dark));
+    const edge = Math.max(0, shade - 16);
+    return { background: `rgb(${shade}, ${shade}, ${shade})`, border: `1px solid rgb(${edge}, ${edge}, ${edge})` };
   };
 
   const isOutsideRange = (day) => !day.isPadding && (day.date < startDate || day.date > endDate);
@@ -766,6 +777,7 @@ function OverallContent({ habits, onBack, onHabitClick }) {
                         {week.map((day, dayIdx) => (
                           <div
                             key={`${weekIdx}-${dayIdx}`}
+                            style={getHeatmapColorStyle(day)}
                             className={`ov-hm-cell ${getHeatmapColorClass(day)} ${day.date === todayStr ? 'ov-hm-cell-today' : ''} ${isOutsideRange(day) ? 'ov-hm-cell-out' : ''}`}
                             title={getHeatmapTooltip(day)}
                           />

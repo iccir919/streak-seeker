@@ -120,6 +120,36 @@
   color: white;
 }
 
+/* Export your data (under the archived list) */
+.data-export {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #E5E5E5;
+  font-size: 12px;
+  color: #888888;
+}
+
+.data-export-btn {
+  padding: 3px 10px;
+  background: white;
+  color: #333333;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.data-export-btn:hover {
+  background: #F5F5F5;
+  border-color: #666666;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;

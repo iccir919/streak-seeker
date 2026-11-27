@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'streak_seeker_data';
 import { v4 as uuidv4 } from 'uuid';
+import { getToday } from './dateHelpers';
 
 // Get all data
 export const getData = () => {
@@ -61,6 +62,11 @@ export const deleteHabit = (habitId) => {
   Object.keys(data.logs).forEach(date => {
     delete data.logs[date][habitId];
   });
+  // ...and the times of day recorded for it
+  Object.keys(data.timestamps || {}).forEach(date => {
+    delete data.timestamps[date][habitId];
+    if (Object.keys(data.timestamps[date]).length === 0) delete data.timestamps[date];
+  });
   saveData(data);
 };
 
@@ -82,9 +88,28 @@ export const toggleCompletion = (habitId, date) => {
   if (!data.logs[date]) {
     data.logs[date] = {};
   }
-  data.logs[date][habitId] = !data.logs[date][habitId];
+  const nowCompleted = !data.logs[date][habitId];
+  data.logs[date][habitId] = nowCompleted;
+
+  // Quietly note the time of day (local, 'HH:MM') when today's box is
+  // ticked, for time-of-day insights in a later version. Past days are not
+  // recorded, because ticking an old box says nothing about when the habit
+  // was done. Unticking removes the time. Stored next to the logs, never
+  // inside them, so existing data keeps working. Nothing leaves the device.
+  if (!data.timestamps) data.timestamps = {};
+  if (nowCompleted && date === getToday()) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    if (!data.timestamps[date]) data.timestamps[date] = {};
+    data.timestamps[date][habitId] = `${hh}:${mm}`;
+  } else if (data.timestamps[date]) {
+    delete data.timestamps[date][habitId];
+    if (Object.keys(data.timestamps[date]).length === 0) delete data.timestamps[date];
+  }
+
   saveData(data);
-  return data.logs[date][habitId];
+  return nowCompleted;
 };
 
 // Get completion status for a habit on a date
